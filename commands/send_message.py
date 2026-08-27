@@ -6,20 +6,24 @@ The command sends the appropriate text via DM to the (still off-server)
 player, and then when the player joins the server, the bot automatically
 adds them to the specified channel. For the "High ticket" type, it also
 sends a reminder DM after 24 hours if the player hasn't joined by then.
+
+Pending invites are stored in the database (Supabase `pending_invites`
+table) instead of a local JSON file, so they survive a bot restart or
+redeploy.
 """
 
-import json
 import logging
-import os
 import time
+from datetime import datetime
 
 import discord
 from discord import app_commands
 from discord.ext import commands, tasks
 
+from database import db, arun
+
 log = logging.getLogger("mctier.commands.send_message")
 
-PENDING_FILE = "pending_invites.json"
 INVITE_URL = "https://discord.gg/7fanAQDxaN"
 
 MESSAGE_TEMPLATES = {
@@ -48,22 +52,14 @@ WINDOW_SECONDS = {
 }
 
 
-def _load_pending() -> list:
-    if not os.path.exists(PENDING_FILE):
-        return []
+def _row_age_seconds(created_at_raw) -> float | None:
+    if not created_at_raw:
+        return None
     try:
-        with open(PENDING_FILE, "r", encoding="utf-8") as f:
-            return json.load(f)
+        created_dt = datetime.fromisoformat(str(created_at_raw).replace("Z", "+00:00"))
+        return time.time() - created_dt.timestamp()
     except Exception:
-        return []
-
-
-def _save_pending(data: list):
-    try:
-        with open(PENDING_FILE, "w", encoding="utf-8") as f:
-            json.dump(data, f, ensure_ascii=False, indent=2)
-    except Exception:
-        pass
+        return None
 
 
 class SendMessageCog(commands.Cog):
@@ -117,17 +113,14 @@ class SendMessageCog(commands.Cog):
             log.error("Error sending DM: %s", exc)
             return await interaction.followup.send(f"❌ An error occurred while sending the DM: `{exc}`", ephemeral=True)
 
-        pending = _load_pending()
-        pending = [p for p in pending if not (p["discord_id"] == user_id and p["type"] == tipus.value)]
-        pending.append({
-            "discord_id": user_id,
-            "type": tipus.value,
-            "channel_id": csatorna.id,
-            "guild_id": interaction.guild.id,
-            "created_at": time.time(),
-            "reminded": False
-        })
-        _save_pending(pending)
+        # Mark any older, still-pending invite of the same type for this user as completed,
+        # so it doesn't also fire a reminder/auto-add alongside the new one.
+        existing = await arun(db.get_pending_invite_for_user, user_id)
+        for entry in existing:
+            if entry.get("invite_type") == tipus.value:
+                await arun(db.mark_invite_completed, entry["id"])
+
+        await arun(db.create_pending_invite, user_id, tipus.value, csatorna.id)
 
         await interaction.followup.send(
             f"✅ Message sent to {target_user.mention} ({tipus.name}). As soon as they join the server, we'll automatically add them to the {csatorna.mention} channel.",
@@ -136,58 +129,46 @@ class SendMessageCog(commands.Cog):
 
     @commands.Cog.listener()
     async def on_member_join(self, member: discord.Member):
-        pending = _load_pending()
-        matches = [p for p in pending if p["discord_id"] == member.id and p.get("guild_id", member.guild.id) == member.guild.id]
-        if not matches:
+        pending = await arun(db.get_pending_invite_for_user, member.id)
+        if not pending:
             return
 
-        remaining = [p for p in pending if p not in matches]
-
-        for entry in matches:
-            channel = member.guild.get_channel(entry["channel_id"])
+        for entry in pending:
+            channel = member.guild.get_channel(entry["ticket_channel_id"])
             if not channel:
                 continue
             try:
                 await channel.set_permissions(member, view_channel=True, send_messages=True, read_message_history=True)
-                label = "High Test" if entry["type"] == "magas" else "Tournament"
+                label = "High Test" if entry["invite_type"] == "magas" else "Tournament"
                 await channel.send(f"👋 {member.mention} joined! ({label})")
             except Exception as exc:
                 log.error("Error adding member to channel: %s", exc)
-
-        _save_pending(remaining)
+            await arun(db.mark_invite_completed, entry["id"])
 
     @tasks.loop(minutes=30)
     async def reminder_loop(self):
-        pending = _load_pending()
+        pending = await arun(db.list_pending_invites)
         if not pending:
             return
 
-        now = time.time()
-        changed = False
-        kept = []
-
         for entry in pending:
-            window = WINDOW_SECONDS.get(entry["type"], 48 * 3600)
-            age = now - entry["created_at"]
-
-            if age >= window:
-                # Deadline expired, remove from the pending list
-                changed = True
+            window = WINDOW_SECONDS.get(entry.get("invite_type"), 48 * 3600)
+            age = _row_age_seconds(entry.get("created_at"))
+            if age is None:
                 continue
 
-            if entry["type"] == "magas" and not entry.get("reminded") and age >= 24 * 3600:
+            if age >= window:
+                # Deadline expired, mark as completed so it stops being tracked
+                await arun(db.mark_invite_completed, entry["id"])
+                continue
+
+            if entry.get("invite_type") == "magas" and not entry.get("reminder_sent") and age >= 24 * 3600:
                 try:
                     user = await self.bot.fetch_user(entry["discord_id"])
                     await user.send(REMINDER_TEMPLATE)
                 except Exception:
                     pass
-                entry["reminded"] = True
-                changed = True
-
-            kept.append(entry)
-
-        if changed:
-            _save_pending(kept)
+                await arun(db.mark_reminder_sent, entry["id"])
 
     @reminder_loop.before_loop
     async def before_reminder_loop(self):

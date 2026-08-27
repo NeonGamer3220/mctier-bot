@@ -5,13 +5,15 @@ Exact category identifiers and inactivity structures.
 
 import discord
 import time
-import json
-import os
 import io
 import datetime
 import aiohttp
 
 from config import ARCHIVE_CHANNEL_ID
+from database import (
+    get_cooldown_expiry_async, set_cooldown_async, delete_cooldown_async,
+    is_dm_optout_async, set_dm_optout_async, save_ticket_archive_async
+)
 
 
 async def fetch_3d_skin_file(mc_username: str, filename: str = "skin.png"):
@@ -52,38 +54,15 @@ HIGHTEST_OPTIONS = [
     ("High Test - HT5", "HT5", "⚔️"),
 ]
 
-COOLDOWNS = {}  # (user_id, gamemode): timestamp
 
-ARCHIVE_INDEX_FILE = "ticket_archives.json"
-DM_OPTOUT_FILE = "dm_optout.json"
-
-
-def is_dm_optout(user_id: int) -> bool:
-    if not os.path.exists(DM_OPTOUT_FILE):
-        return False
-    try:
-        with open(DM_OPTOUT_FILE, "r", encoding="utf-8") as f:
-            data = json.load(f)
-        return user_id in data
-    except Exception:
-        return False
+async def is_dm_optout(user_id: int) -> bool:
+    """Whether the player has opted out of the bot's test-result/feedback DMs. Backed by the database."""
+    return await is_dm_optout_async(user_id)
 
 
-def set_dm_optout(user_id: int):
-    data = []
-    if os.path.exists(DM_OPTOUT_FILE):
-        try:
-            with open(DM_OPTOUT_FILE, "r", encoding="utf-8") as f:
-                data = json.load(f)
-        except Exception:
-            data = []
-    if user_id not in data:
-        data.append(user_id)
-    try:
-        with open(DM_OPTOUT_FILE, "w", encoding="utf-8") as f:
-            json.dump(data, f)
-    except Exception:
-        pass
+async def set_dm_optout(user_id: int) -> None:
+    """Records that the player no longer wants to receive these DMs. Backed by the database."""
+    await set_dm_optout_async(user_id)
 
 
 def get_ticket_category(guild: discord.Guild, is_legacy: bool):
@@ -94,18 +73,20 @@ def get_queue_category(guild: discord.Guild, is_legacy: bool):
     cat_id = LEGACY_QUEUE_CATEGORY_ID if is_legacy else MODERN_QUEUE_CATEGORY_ID
     return guild.get_channel(cat_id)
 
-def check_timeout(user_id: int, gamemode: str):
-    key = (user_id, gamemode)
-    if key in COOLDOWNS:
-        remaining = COOLDOWNS[key] - time.time()
+async def check_timeout(user_id: int, gamemode: str):
+    """Checks whether the player is on a testing cooldown for this gamemode. Backed by the database."""
+    expires = await get_cooldown_expiry_async(user_id, gamemode)
+    if expires:
+        remaining = (expires - datetime.datetime.now(datetime.timezone.utc)).total_seconds()
         if remaining > 0:
             mins = int(remaining // 60)
             secs = int(remaining % 60)
-            return True, f"{mins}p {secs}mp"
+            return True, f"{mins}m {secs}s"
     return False, ""
 
-def set_cooldown(user_id: int, gamemode: str, duration_seconds: int = 3600):
-    COOLDOWNS[(user_id, gamemode)] = time.time() + duration_seconds
+async def set_cooldown(user_id: int, gamemode: str, duration_seconds: int = 3600):
+    """Records a testing cooldown for the player in this gamemode. Backed by the database."""
+    await set_cooldown_async(user_id, gamemode, duration_seconds)
 
 async def update_queue_message(message: discord.Message, q_data: dict, mode_key: str):
     players = q_data["players"]
@@ -115,15 +96,17 @@ async def update_queue_message(message: discord.Message, q_data: dict, mode_key:
     if not players:
         players_text = "*- Empty -*"
     else:
-        for i, p in enumerate(players, 1):
+        lines = []
+        for p in players:
             status_icon = p.get('status', '⏳ WAITING')
-            players_text += f"`{i}.` <@{p['id']}> (**{p['mc']}**) - `{status_icon}`\n"
+            lines.append(f"{status_icon} <@{p['id']}> (**{p['mc']}**)")
+        players_text = "\n".join(lines)
 
     testers_text = ""
-    for t_id in testers:
-        testers_text += f"🛡️ <@{t_id}>\n"
-    if not testers_text:
+    if not testers:
         testers_text = "*- No active tester -*"
+    else:
+        testers_text = "\n".join(f"🛡️ <@{t}>" for t in testers)
 
     desc = f"**Spots:** {len(players)}/20\n\n**Players in queue:**\n{players_text}\n**Active Testers:**\n{testers_text}"
     
@@ -132,28 +115,10 @@ async def update_queue_message(message: discord.Message, q_data: dict, mode_key:
     await message.edit(embed=embed)
 
 
-def _load_archive_index() -> list:
-    if not os.path.exists(ARCHIVE_INDEX_FILE):
-        return []
-    try:
-        with open(ARCHIVE_INDEX_FILE, "r", encoding="utf-8") as f:
-            return json.load(f)
-    except Exception:
-        return []
-
-
-def _save_archive_index(data: list):
-    try:
-        with open(ARCHIVE_INDEX_FILE, "w", encoding="utf-8") as f:
-            json.dump(data, f, ensure_ascii=False, indent=2)
-    except Exception:
-        pass
-
-
 async def archive_channel(channel: discord.abc.Messageable, closed_by: discord.abc.User, reason: str = "") -> None:
     """
     Saves the channel's full message history to a .txt transcript, sends it to
-    the archive channel, and records it in a searchable index (ticket_archives.json).
+    the archive channel, and records it in the database's ticket_archives table.
     If ARCHIVE_CHANNEL_ID is not set, it silently skips this.
     """
     if not ARCHIVE_CHANNEL_ID:
@@ -198,16 +163,14 @@ async def archive_channel(channel: discord.abc.Messageable, closed_by: discord.a
     except Exception:
         return
 
-    index = _load_archive_index()
-    index.append({
-        "channel_name": channel.name,
-        "channel_id": channel.id,
-        "closed_by": str(closed_by),
-        "closed_by_id": getattr(closed_by, "id", None),
-        "reason": reason,
-        "message_count": msg_count,
-        "archive_message_id": archive_msg.id,
-        "archive_channel_id": ARCHIVE_CHANNEL_ID,
-        "closed_at": datetime.datetime.now(datetime.timezone.utc).isoformat()
-    })
-    _save_archive_index(index)
+    try:
+        await save_ticket_archive_async(
+            channel_name=channel.name,
+            closed_by=str(closed_by),
+            reason=reason,
+            message_count=msg_count,
+            archive_channel_id=ARCHIVE_CHANNEL_ID,
+            archive_message_id=archive_msg.id,
+        )
+    except Exception:
+        pass

@@ -1,67 +1,28 @@
 """
 MCTier Bot - Idea Channel (commands/idea_channel.py)
 
-/ideachannel-set <channel>   -> sets the ideas channel
-/ideachannel-remove          -> clears the setting
-/ideachannel-info            -> shows the current setting
+/ideachannel set <channel>   -> sets the ideas channel
+/ideachannel remove          -> clears the setting
+/ideachannel info            -> shows the current setting
 
 If someone sends a message in the configured channel, the bot deletes the
 original message and sends a "New idea!" embed with ✅ / ❌ voting buttons
 instead. The buttons are persistent and keep working after a restart.
+All settings and votes are stored in the database.
 """
 
-import json
 import logging
-import os
 
 import discord
 from discord import app_commands
 from discord.ext import commands
 
+from database import (
+    get_idea_channel_id_async, set_idea_channel_id_async, remove_idea_channel_id_async,
+    get_idea_vote_async, save_idea_vote_async
+)
+
 log = logging.getLogger("mctier.commands.idea_channel")
-
-CONFIG_FILE = "idea_channel_config.json"
-VOTES_FILE = "idea_votes.json"
-
-
-# ==========================================
-# JSON HELPER FUNCTIONS
-# ==========================================
-def _load_json(path: str) -> dict:
-    if not os.path.exists(path):
-        return {}
-    try:
-        with open(path, "r", encoding="utf-8") as f:
-            return json.load(f)
-    except Exception:
-        return {}
-
-
-def _save_json(path: str, data: dict) -> None:
-    try:
-        with open(path, "w", encoding="utf-8") as f:
-            json.dump(data, f, ensure_ascii=False, indent=2)
-    except Exception as exc:
-        log.error("Error saving %s: %s", path, exc)
-
-
-def get_idea_channel_id(guild_id: int) -> int | None:
-    config = _load_json(CONFIG_FILE)
-    value = config.get(str(guild_id))
-    return int(value) if value else None
-
-
-def set_idea_channel_id(guild_id: int, channel_id: int) -> None:
-    config = _load_json(CONFIG_FILE)
-    config[str(guild_id)] = channel_id
-    _save_json(CONFIG_FILE, config)
-
-
-def remove_idea_channel_id(guild_id: int) -> None:
-    config = _load_json(CONFIG_FILE)
-    if str(guild_id) in config:
-        del config[str(guild_id)]
-        _save_json(CONFIG_FILE, config)
 
 
 # ==========================================
@@ -87,9 +48,9 @@ def build_idea_embed(author: discord.abc.User, content: str, approve: list, reje
 class IdeaVoteView(discord.ui.View):
     """
     A persistent View with static custom_ids. Votes are always
-    stored/read based on the actually clicked message
-    (interaction.message.id), so this single View instance can be
-    used for every idea message, even after a restart.
+    stored/read (in the database) based on the actually clicked
+    message (interaction.message.id), so this single View instance can
+    be used for every idea message, even after a restart.
     """
 
     def __init__(self) -> None:
@@ -97,18 +58,13 @@ class IdeaVoteView(discord.ui.View):
 
     async def _handle_vote(self, interaction: discord.Interaction, vote: str) -> None:
         message = interaction.message
-        votes = _load_json(VOTES_FILE)
-        entry = votes.get(str(message.id))
+        entry = await get_idea_vote_async(message.id)
 
         if entry is None:
-            # If it isn't recorded yet for some reason (e.g. an old message), create it.
-            author_id = None
-            if message.embeds and message.embeds[0].description:
-                pass
-            entry = {"approve": [], "reject": [], "author_id": author_id, "content": ""}
+            entry = {"approve": [], "reject": [], "author_id": None, "guild_id": interaction.guild_id, "content": ""}
 
-        approve = set(entry.get("approve", []))
-        reject = set(entry.get("reject", []))
+        approve = set(entry.get("approve") or [])
+        reject = set(entry.get("reject") or [])
         uid = interaction.user.id
 
         if vote == "approve":
@@ -124,10 +80,14 @@ class IdeaVoteView(discord.ui.View):
                 reject.add(uid)
                 approve.discard(uid)
 
-        entry["approve"] = list(approve)
-        entry["reject"] = list(reject)
-        votes[str(message.id)] = entry
-        _save_json(VOTES_FILE, votes)
+        await save_idea_vote_async(
+            message_id=message.id,
+            guild_id=entry.get("guild_id") or interaction.guild_id,
+            author_id=entry.get("author_id"),
+            content=entry.get("content", ""),
+            approve=list(approve),
+            reject=list(reject),
+        )
 
         # Update button labels
         for child in self.children:
@@ -169,7 +129,7 @@ class IdeaChannelCog(commands.Cog):
     @app_commands.describe(channel="The channel where the idea embeds will appear.")
     @app_commands.checks.has_permissions(administrator=True)
     async def set_channel(self, interaction: discord.Interaction, channel: discord.TextChannel) -> None:
-        set_idea_channel_id(interaction.guild.id, channel.id)
+        await set_idea_channel_id_async(interaction.guild.id, channel.id)
         await interaction.response.send_message(
             f"✅ Ideas channel set to: {channel.mention}\n"
             f"From now on, every message sent here will automatically become an idea embed with voting buttons.",
@@ -179,13 +139,13 @@ class IdeaChannelCog(commands.Cog):
     @ideachannel.command(name="remove", description="Clears the configured ideas channel.")
     @app_commands.checks.has_permissions(administrator=True)
     async def remove_channel(self, interaction: discord.Interaction) -> None:
-        remove_idea_channel_id(interaction.guild.id)
+        await remove_idea_channel_id_async(interaction.guild.id)
         await interaction.response.send_message("✅ The ideas channel setting has been cleared.", ephemeral=True)
 
     @ideachannel.command(name="info", description="Shows the currently configured ideas channel.")
     @app_commands.checks.has_permissions(administrator=True)
     async def info(self, interaction: discord.Interaction) -> None:
-        channel_id = get_idea_channel_id(interaction.guild.id)
+        channel_id = await get_idea_channel_id_async(interaction.guild.id)
         if not channel_id:
             return await interaction.response.send_message("ℹ️ No ideas channel is currently configured.", ephemeral=True)
 
@@ -198,7 +158,7 @@ class IdeaChannelCog(commands.Cog):
         if message.author.bot or not message.guild:
             return
 
-        channel_id = get_idea_channel_id(message.guild.id)
+        channel_id = await get_idea_channel_id_async(message.guild.id)
         if not channel_id or message.channel.id != channel_id:
             return
 
@@ -223,15 +183,14 @@ class IdeaChannelCog(commands.Cog):
             view = IdeaVoteView()
             sent = await message.channel.send(embed=embed, view=view)
 
-            votes = _load_json(VOTES_FILE)
-            votes[str(sent.id)] = {
-                "approve": [],
-                "reject": [],
-                "author_id": author.id,
-                "guild_id": message.guild.id,
-                "content": content
-            }
-            _save_json(VOTES_FILE, votes)
+            await save_idea_vote_async(
+                message_id=sent.id,
+                guild_id=message.guild.id,
+                author_id=author.id,
+                content=content,
+                approve=[],
+                reject=[],
+            )
 
             if can_delete:
                 try:

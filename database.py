@@ -179,6 +179,13 @@ class Database:
         self._client.table("pending_invites").update({"reminder_sent": True}).eq("id", invite_id).execute()
 
 
+    def list_pending_invites(self) -> list[dict]:
+        if not self._client:
+            return []
+        resp = self._client.table("pending_invites").select("*").eq("completed", False).execute()
+        return resp.data or []
+
+
 db = Database()
 
 # ======================================================================
@@ -263,6 +270,151 @@ async def get_discord_by_minecraft_async(minecraft_name: str) -> int | None:
 async def unlink_minecraft_account_async(discord_id: int) -> bool:
     """Unlink an account asynchronously."""
     return await arun(db.unlink_account, discord_id)
+
+# --- Test cooldowns (replaces the old tier_cooldowns.json) ---
+
+async def get_cooldown_expiry_async(discord_id: int, gamemode: str) -> "datetime | None":
+    """Returns the cooldown expiry datetime for a player in a gamemode, or None if no active cooldown."""
+    if not db._client:
+        return None
+    resp = await arun(
+        lambda: db._client.table("test_cooldowns").select("expires_at")
+        .eq("discord_id", discord_id).eq("gamemode", gamemode).execute()
+    )
+    if not resp.data:
+        return None
+    raw = resp.data[0].get("expires_at")
+    if not raw:
+        return None
+    try:
+        expires = datetime.fromisoformat(str(raw).replace("Z", "+00:00"))
+    except Exception:
+        return None
+    if expires <= datetime.now(timezone.utc):
+        return None
+    return expires
+
+async def set_cooldown_async(discord_id: int, gamemode: str, duration_seconds: int = 3600) -> None:
+    """Records/overwrites a testing cooldown for a player in a gamemode."""
+    if not db._client:
+        return
+    expires_at = (datetime.now(timezone.utc) + timedelta(seconds=duration_seconds)).isoformat()
+    await arun(
+        lambda: db._client.table("test_cooldowns").upsert(
+            {"discord_id": discord_id, "gamemode": gamemode, "expires_at": expires_at},
+            on_conflict="discord_id,gamemode"
+        ).execute()
+    )
+
+async def get_expired_cooldowns_async() -> list[dict]:
+    """Returns all cooldown rows that have already expired (used by the expiry notifier)."""
+    if not db._client:
+        return []
+    now_iso = datetime.now(timezone.utc).isoformat()
+    resp = await arun(
+        lambda: db._client.table("test_cooldowns").select("*").lte("expires_at", now_iso).execute()
+    )
+    return resp.data or []
+
+async def delete_cooldown_async(discord_id: int, gamemode: str) -> None:
+    if not db._client:
+        return
+    await arun(
+        lambda: db._client.table("test_cooldowns").delete()
+        .eq("discord_id", discord_id).eq("gamemode", gamemode).execute()
+    )
+
+# --- DM opt-out (replaces the old dm_optout.json) ---
+
+async def is_dm_optout_async(discord_id: int) -> bool:
+    if not db._client:
+        return False
+    resp = await arun(
+        lambda: db._client.table("dm_optouts").select("discord_id").eq("discord_id", discord_id).execute()
+    )
+    return bool(resp.data)
+
+async def set_dm_optout_async(discord_id: int) -> None:
+    if not db._client:
+        return
+    await arun(
+        lambda: db._client.table("dm_optouts").upsert(
+            {"discord_id": discord_id}, on_conflict="discord_id"
+        ).execute()
+    )
+
+# --- Idea channel settings (replaces idea_channel_config.json) ---
+
+async def get_idea_channel_id_async(guild_id: int) -> int | None:
+    if not db._client:
+        return None
+    resp = await arun(
+        lambda: db._client.table("idea_channels").select("channel_id").eq("guild_id", guild_id).execute()
+    )
+    return int(resp.data[0]["channel_id"]) if resp.data else None
+
+async def set_idea_channel_id_async(guild_id: int, channel_id: int) -> None:
+    if not db._client:
+        return
+    await arun(
+        lambda: db._client.table("idea_channels").upsert(
+            {"guild_id": guild_id, "channel_id": channel_id}, on_conflict="guild_id"
+        ).execute()
+    )
+
+async def remove_idea_channel_id_async(guild_id: int) -> None:
+    if not db._client:
+        return
+    await arun(lambda: db._client.table("idea_channels").delete().eq("guild_id", guild_id).execute())
+
+# --- Idea votes (replaces idea_votes.json) ---
+
+async def get_idea_vote_async(message_id: int) -> dict | None:
+    if not db._client:
+        return None
+    resp = await arun(
+        lambda: db._client.table("idea_votes").select("*").eq("message_id", message_id).execute()
+    )
+    return resp.data[0] if resp.data else None
+
+async def save_idea_vote_async(message_id: int, guild_id: int, author_id: int, content: str, approve: list, reject: list) -> None:
+    if not db._client:
+        return
+    await arun(
+        lambda: db._client.table("idea_votes").upsert({
+            "message_id": message_id,
+            "guild_id": guild_id,
+            "author_id": author_id,
+            "content": content,
+            "approve": approve,
+            "reject": reject,
+        }, on_conflict="message_id").execute()
+    )
+
+# --- Ticket archive index (replaces ticket_archives.json) ---
+
+async def save_ticket_archive_async(channel_name: str, closed_by: str, reason: str, message_count: int, archive_channel_id: int, archive_message_id: int) -> None:
+    if not db._client:
+        return
+    await arun(
+        lambda: db._client.table("ticket_archives").insert({
+            "channel_name": channel_name,
+            "closed_by": closed_by,
+            "reason": reason,
+            "message_count": message_count,
+            "archive_channel_id": archive_channel_id,
+            "archive_message_id": archive_message_id,
+        }).execute()
+    )
+
+async def list_ticket_archives_async(limit: int = 10, player: str = None) -> list[dict]:
+    if not db._client:
+        return []
+    query = db._client.table("ticket_archives").select("*").order("created_at", desc=True).limit(limit)
+    if player:
+        query = query.ilike("channel_name", f"%{player}%")
+    resp = await arun(lambda: query.execute())
+    return resp.data or []
 
 async def save_test_result_supabase(player_user: discord.Member, player_mc: str, gamemode: str, tier: str, tester_user: discord.Member, interaction: discord.Interaction):
     """

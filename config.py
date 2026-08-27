@@ -59,7 +59,6 @@ MINECRAFT_API_URL = os.getenv("MINECRAFT_API_URL", "http://localhost:8080").rstr
 
 HTTP_TIMEOUT_SECONDS = 10
 COOLDOWN_SECONDS = 14 * 24 * 60 * 60
-DATA_FILE = "data.json"
 TESTS_TABLE = "tests"
 
 # Category for Modern (ELO) queue/test channels:

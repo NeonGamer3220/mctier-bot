@@ -9,7 +9,8 @@ import time
 import asyncio
 
 from commands.tier_ui import PanelSelectView
-from commands.tier_utils import INACTIVE_TICKETS, archive_channel, COOLDOWNS, is_dm_optout
+from commands.tier_utils import INACTIVE_TICKETS, archive_channel, is_dm_optout
+from database import get_expired_cooldowns_async, delete_cooldown_async, list_ticket_archives_async
 from config import STAFF_ROLE_ID, REGULATOR_ROLE_ID, get_gamemode_display_name
 
 
@@ -63,13 +64,14 @@ class TierSystemCog(commands.Cog):
 
     @tasks.loop(minutes=1)
     async def cooldown_notifier(self):
-        now = time.time()
-        expired = [(key, expiry) for key, expiry in list(COOLDOWNS.items()) if expiry <= now]
+        expired_rows = await get_expired_cooldowns_async()
 
-        for (user_id, gamemode), _ in expired:
-            COOLDOWNS.pop((user_id, gamemode), None)
+        for row in expired_rows:
+            user_id = int(row["discord_id"])
+            gamemode = row["gamemode"]
+            await delete_cooldown_async(user_id, gamemode)
 
-            if is_dm_optout(user_id):
+            if await is_dm_optout(user_id):
                 continue
 
             try:
@@ -146,31 +148,21 @@ class TierSystemCog(commands.Cog):
     @app_commands.describe(count="How many recent archives to list (max 25).", player="Filter by Minecraft name / channel name (optional).")
     @app_commands.checks.has_permissions(administrator=True)
     async def archives(self, interaction: discord.Interaction, count: int = 10, player: str = None):
-        import json, os
-        if not os.path.exists("ticket_archives.json"):
-            return await interaction.response.send_message("📭 No archived tickets yet.", ephemeral=True)
-        try:
-            with open("ticket_archives.json", "r", encoding="utf-8") as f:
-                index = json.load(f)
-        except Exception:
-            return await interaction.response.send_message("❌ Failed to read the archive index.", ephemeral=True)
+        await interaction.response.defer(ephemeral=True)
+        entries = await list_ticket_archives_async(limit=max(1, min(count, 25)), player=player)
 
-        if player:
-            index = [e for e in index if player.lower() in e.get("channel_name", "").lower()]
-
-        index = list(reversed(index))[:max(1, min(count, 25))]
-        if not index:
-            return await interaction.response.send_message("📭 No results found.", ephemeral=True)
+        if not entries:
+            return await interaction.followup.send("📭 No results found.", ephemeral=True)
 
         embed = discord.Embed(title="🗄️ Most Recently Archived Tickets", color=discord.Color.dark_grey())
-        for e in index:
+        for e in entries:
             jump = f"https://discord.com/channels/{interaction.guild.id}/{e.get('archive_channel_id')}/{e.get('archive_message_id')}"
             embed.add_field(
                 name=f"#{e.get('channel_name')}",
                 value=f"Closed by: {e.get('closed_by')}\nReason: {e.get('reason') or '-'}\nMessages: {e.get('message_count')}\n[Open]({jump})",
                 inline=False
             )
-        await interaction.response.send_message(embed=embed, ephemeral=True)
+        await interaction.followup.send(embed=embed, ephemeral=True)
 
     @app_commands.command(name="pingpanel", description="Sends the ping panel with a Modern or Legacy option (dropdown).")
     @app_commands.describe(

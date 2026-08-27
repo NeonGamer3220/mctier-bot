@@ -237,7 +237,7 @@ class TestFeedbackView(discord.ui.View):
     async def opt_out(self, interaction: discord.Interaction, button: discord.ui.Button):
         if interaction.user.id != self.player_id:
             return await interaction.response.send_message("❌ This is not your notification!", ephemeral=True)
-        set_dm_optout(interaction.user.id)
+        await set_dm_optout(interaction.user.id)
         for child in self.children:
             child.disabled = True
         await interaction.response.edit_message(view=self)
@@ -285,7 +285,7 @@ class TestResultModal(discord.ui.Modal, title="Record Test Result"):
         except Exception:
             pass
 
-        set_cooldown(self.player_id, self.gamemode, 3600)
+        await set_cooldown(self.player_id, self.gamemode, 3600)
 
         if self.queue_ch_id and self.queue_ch_id in ACTIVE_QUEUES:
             q_data = ACTIVE_QUEUES[self.queue_ch_id]
@@ -322,7 +322,7 @@ class TestResultModal(discord.ui.Modal, title="Record Test Result"):
                 pass
 
         # DM the player, unless they've opted out of notifications
-        if not is_dm_optout(self.player_id):
+        if not await is_dm_optout(self.player_id):
             try:
                 dm_embed = discord.Embed(
                     title="📋 Test Result",
@@ -423,7 +423,7 @@ class QueueActiveView(discord.ui.View):
             await update_queue_message(interaction.message, q_data, self.mode_key)
             await interaction.followup.send("✅ You successfully left the queue.", ephemeral=True)
         else:
-            has_cd, cd_str = check_timeout(user.id, self.mode_key)
+            has_cd, cd_str = await check_timeout(user.id, self.mode_key)
             if has_cd:
                 return await interaction.followup.send(f"⏱️ You are on cooldown in this gamemode! Time remaining: `{cd_str}`", ephemeral=True)
 
@@ -504,7 +504,7 @@ class QueueActiveView(discord.ui.View):
         await test_chan.send(content=f"{player_user.mention} {interaction.user.mention}", embed=embed, view=TestTicketView(target_player['id'], target_player['mc'], self.mode_key, ch_id, self.is_legacy))
         await interaction.followup.send(f"✅ Next player called! Test channel: {test_chan.mention}", ephemeral=True)
 
-        if not is_dm_optout(target_player['id']):
+        if not await is_dm_optout(target_player['id']):
             try:
                 dm_embed = discord.Embed(
                     title="🎮 It's your turn!",
