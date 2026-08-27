@@ -6,9 +6,9 @@ MCTier Bot - Idea Channel (commands/idea_channel.py)
 /ideachannel info            -> shows the current setting
 
 If someone sends a message in the configured channel, the bot deletes the
-original message and sends a "New idea!" embed with ✅ / ❌ voting buttons
-instead. The buttons are persistent and keep working after a restart.
-All settings and votes are stored in the database.
+original message and reposts it as a "New idea!" embed, reacting to it
+with ✅ / ❌ so people can vote by reacting. Discord tracks and displays
+the vote counts natively, so nothing needs to be stored for this.
 """
 
 import logging
@@ -18,98 +18,29 @@ from discord import app_commands
 from discord.ext import commands
 
 from database import (
-    get_idea_channel_id_async, set_idea_channel_id_async, remove_idea_channel_id_async,
-    get_idea_vote_async, save_idea_vote_async
+    get_idea_channel_id_async, set_idea_channel_id_async, remove_idea_channel_id_async
 )
 
 log = logging.getLogger("mctier.commands.idea_channel")
+
+APPROVE_EMOJI = "✅"
+REJECT_EMOJI = "❌"
 
 
 # ==========================================
 # EMBED BUILDING
 # ==========================================
-def build_idea_embed(author: discord.abc.User, content: str, approve: list, reject: list) -> discord.Embed:
+def build_idea_embed(author: discord.abc.User, content: str) -> discord.Embed:
     embed = discord.Embed(
         title="💡 New idea!",
         description=(
             f"**Idea by:** {author.mention} | {author}\n\n"
-            f"✅ **I support this**       ❌ **I reject this**\n\n"
+            f"React with {APPROVE_EMOJI} to support this, or {REJECT_EMOJI} to reject it.\n\n"
             f"> {content}"
         ),
         color=discord.Color.gold()
     )
-    embed.set_footer(text=f"👍 {len(approve)} in favor  •  👎 {len(reject)} against")
     return embed
-
-
-# ==========================================
-# PERSISTENT VOTING VIEW
-# ==========================================
-class IdeaVoteView(discord.ui.View):
-    """
-    A persistent View with static custom_ids. Votes are always
-    stored/read (in the database) based on the actually clicked
-    message (interaction.message.id), so this single View instance can
-    be used for every idea message, even after a restart.
-    """
-
-    def __init__(self) -> None:
-        super().__init__(timeout=None)
-
-    async def _handle_vote(self, interaction: discord.Interaction, vote: str) -> None:
-        message = interaction.message
-        entry = await get_idea_vote_async(message.id)
-
-        if entry is None:
-            entry = {"approve": [], "reject": [], "author_id": None, "guild_id": interaction.guild_id, "content": ""}
-
-        approve = set(entry.get("approve") or [])
-        reject = set(entry.get("reject") or [])
-        uid = interaction.user.id
-
-        if vote == "approve":
-            if uid in approve:
-                approve.discard(uid)
-            else:
-                approve.add(uid)
-                reject.discard(uid)
-        else:
-            if uid in reject:
-                reject.discard(uid)
-            else:
-                reject.add(uid)
-                approve.discard(uid)
-
-        await save_idea_vote_async(
-            message_id=message.id,
-            guild_id=entry.get("guild_id") or interaction.guild_id,
-            author_id=entry.get("author_id"),
-            content=entry.get("content", ""),
-            approve=list(approve),
-            reject=list(reject),
-        )
-
-        # Update button labels
-        for child in self.children:
-            if isinstance(child, discord.ui.Button):
-                if child.custom_id == "idea_vote_approve":
-                    child.label = str(len(approve))
-                elif child.custom_id == "idea_vote_reject":
-                    child.label = str(len(reject))
-
-        embed = message.embeds[0] if message.embeds else None
-        if embed:
-            embed.set_footer(text=f"👍 {len(approve)} in favor  •  👎 {len(reject)} against")
-
-        await interaction.response.edit_message(embed=embed, view=self)
-
-    @discord.ui.button(label="0", emoji="✅", style=discord.ButtonStyle.success, custom_id="idea_vote_approve")
-    async def approve_button(self, interaction: discord.Interaction, button: discord.ui.Button) -> None:
-        await self._handle_vote(interaction, "approve")
-
-    @discord.ui.button(label="0", emoji="❌", style=discord.ButtonStyle.danger, custom_id="idea_vote_reject")
-    async def reject_button(self, interaction: discord.Interaction, button: discord.ui.Button) -> None:
-        await self._handle_vote(interaction, "reject")
 
 
 # ==========================================
@@ -132,7 +63,7 @@ class IdeaChannelCog(commands.Cog):
         await set_idea_channel_id_async(interaction.guild.id, channel.id)
         await interaction.response.send_message(
             f"✅ Ideas channel set to: {channel.mention}\n"
-            f"From now on, every message sent here will automatically become an idea embed with voting buttons.",
+            f"From now on, every message sent here will automatically become an idea embed that people can vote on with {APPROVE_EMOJI}/{REJECT_EMOJI} reactions.",
             ephemeral=True
         )
 
@@ -176,21 +107,13 @@ class IdeaChannelCog(commands.Cog):
         can_delete = message.channel.permissions_for(message.guild.me).manage_messages
 
         try:
-            embed = build_idea_embed(author, content or "*(attachment only)*", [], [])
+            embed = build_idea_embed(author, content or "*(attachment only)*")
             if attachments:
                 embed.set_image(url=attachments[0].url)
 
-            view = IdeaVoteView()
-            sent = await message.channel.send(embed=embed, view=view)
-
-            await save_idea_vote_async(
-                message_id=sent.id,
-                guild_id=message.guild.id,
-                author_id=author.id,
-                content=content,
-                approve=[],
-                reject=[],
-            )
+            sent = await message.channel.send(embed=embed)
+            await sent.add_reaction(APPROVE_EMOJI)
+            await sent.add_reaction(REJECT_EMOJI)
 
             if can_delete:
                 try:

@@ -202,47 +202,9 @@ async def get_linked_minecraft_name_async(discord_id: int) -> str | None:
     acc = await arun(db.get_linked_account, discord_id)
     return acc.get("minecraft_name") if acc else None
 
-async def get_tgf_cooldown(discord_id: int) -> "datetime | None":
-    # If you have a TGF cooldown table in Supabase, it can be queried here.
-    # The "expires_at" column name must be used (that is what the Supabase
-    # table has), and expired (past) cooldowns are not taken into account.
-    res = await arun(supabase_select, "tgf_cooldowns", "discord_id", discord_id)
-    if not res:
-        return None
-    raw = res[0].get("expires_at")
-    if not raw:
-        return None
-    try:
-        expires = datetime.fromisoformat(str(raw).replace("Z", "+00:00"))
-    except Exception:
-        return None
-    if expires <= datetime.now(timezone.utc):
-        return None
-    return expires
-
 # ======================================================================
 # MISSING COMPATIBILITY FUNCTIONS FOR THE COGS
 # ======================================================================
-
-async def api_post_elo_instant(*args: Any, **kwargs: Any) -> dict:
-    """Temporary stub for the instant Elo update."""
-    log.info("api_post_elo_instant called")
-    return {"status": "ok"}
-
-async def set_tgf_cooldown(discord_id: int, days: int = 14) -> bool:
-    """Record a TGF cooldown."""
-    if not db._client:
-        return False
-    until = (datetime.now(timezone.utc) + timedelta(days=days)).isoformat()
-    # IMPORTANT: in the Supabase "tgf_cooldowns" table the column is named
-    # "expires_at", not "cooldown_until" — that used to throw a NOT NULL error.
-    resp = await arun(
-        lambda: db._client.table("tgf_cooldowns").upsert(
-            {"discord_id": discord_id, "expires_at": until},
-            on_conflict="discord_id"
-        ).execute()
-    )
-    return bool(resp.data)
 
 async def generate_link_code_async(discord_id: int) -> str:
     """Generate a linking code for the player."""
@@ -366,30 +328,6 @@ async def remove_idea_channel_id_async(guild_id: int) -> None:
     if not db._client:
         return
     await arun(lambda: db._client.table("idea_channels").delete().eq("guild_id", guild_id).execute())
-
-# --- Idea votes (replaces idea_votes.json) ---
-
-async def get_idea_vote_async(message_id: int) -> dict | None:
-    if not db._client:
-        return None
-    resp = await arun(
-        lambda: db._client.table("idea_votes").select("*").eq("message_id", message_id).execute()
-    )
-    return resp.data[0] if resp.data else None
-
-async def save_idea_vote_async(message_id: int, guild_id: int, author_id: int, content: str, approve: list, reject: list) -> None:
-    if not db._client:
-        return
-    await arun(
-        lambda: db._client.table("idea_votes").upsert({
-            "message_id": message_id,
-            "guild_id": guild_id,
-            "author_id": author_id,
-            "content": content,
-            "approve": approve,
-            "reject": reject,
-        }, on_conflict="message_id").execute()
-    )
 
 # --- Ticket archive index (replaces ticket_archives.json) ---
 

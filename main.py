@@ -7,9 +7,10 @@ import logging
 import os
 import sys
 import discord
+from discord import app_commands
 from discord.ext import commands
 
-from config import config
+from config import config, BOT_COMMANDS_CHANNEL_ID, HELP_TICKET_CATEGORY_ID
 
 # Logging setup
 logging.basicConfig(
@@ -20,13 +21,13 @@ logging.basicConfig(
 )
 log = logging.getLogger("mctier.main")
 
+from commands.tier_utils import MODERN_CATEGORY_ID, MODERN_QUEUE_CATEGORY_ID
+
 # List of cogs/extensions to load (commands.panels REMOVED)
 INITIAL_EXTENSIONS = [
     "commands.profile",
     "commands.linking",
-    "commands.tgf",
     "commands.tier_system",
-    "commands.staff",
     "commands.ban_enforcement",
     "commands.tester_role_sync",
     "commands.spin",
@@ -42,6 +43,43 @@ intents = discord.Intents.default()
 intents.message_content = True
 intents.members = True
 intents.guilds = True
+
+# Channel categories that count as "inside a ticket" for the BOT_COMMANDS
+# restriction below - the tier test/queue tickets and the support tickets.
+TICKET_CATEGORY_IDS = {MODERN_CATEGORY_ID, MODERN_QUEUE_CATEGORY_ID, HELP_TICKET_CATEGORY_ID}
+
+
+class RestrictedCommandTree(app_commands.CommandTree):
+    """
+    If BOT_COMMANDS is set, restricts every slash command to that one
+    channel, or to inside an active ticket (test/queue/high-test/support
+    channels). Server admins are always exempt, so they can still place
+    panels, run /report, etc. from anywhere. If BOT_COMMANDS isn't set,
+    this check does nothing and every command works everywhere as before.
+    """
+
+    async def interaction_check(self, interaction: discord.Interaction) -> bool:
+        if not BOT_COMMANDS_CHANNEL_ID or not interaction.guild:
+            return True
+
+        channel = interaction.channel
+        if channel and channel.id == BOT_COMMANDS_CHANNEL_ID:
+            return True
+
+        category_id = getattr(channel, "category_id", None)
+        if category_id in TICKET_CATEGORY_IDS:
+            return True
+
+        if interaction.user.guild_permissions.administrator:
+            return True
+
+        bot_commands_channel = interaction.guild.get_channel(BOT_COMMANDS_CHANNEL_ID)
+        location = bot_commands_channel.mention if bot_commands_channel else "the bot-commands channel"
+        await interaction.response.send_message(
+            f"❌ You can only use bot commands in {location}, or inside an active ticket.",
+            ephemeral=True
+        )
+        return False
 
 
 class MCTierBot(commands.Bot):
@@ -88,7 +126,7 @@ class MCTierBot(commands.Bot):
             log.error("Error syncing commands: %s", exc)
 
 
-bot = MCTierBot(command_prefix="!", intents=intents)
+bot = MCTierBot(command_prefix="!", intents=intents, tree_cls=RestrictedCommandTree)
 
 _persistent_views_registered = False
 
@@ -100,25 +138,20 @@ def register_persistent_views(bot: commands.Bot) -> None:
     without having to resend the panel.
 
     This applies to the dropdown menu of the ping/queue/hightest panels
-    (PanelSelectView), as well as the TGF panel, since their
-    custom_id is fixed and does not depend on a specific user/ticket.
+    (PanelSelectView), since their custom_id is fixed and does not
+    depend on a specific user/ticket.
     """
     global _persistent_views_registered
     if _persistent_views_registered:
         return
 
     from commands.tier_ui import PanelSelectView
-    from commands.tgf import TGFPanelView
-    from commands.idea_channel import IdeaVoteView
 
     for action_type in ("ping", "queue", "hightest"):
         bot.add_view(PanelSelectView(action_type))
 
-    bot.add_view(TGFPanelView())
-    bot.add_view(IdeaVoteView())
-
     _persistent_views_registered = True
-    log.info("Persistent panel Views registered (ping/queue/hightest/tgf/idea).")
+    log.info("Persistent panel Views registered (ping/queue/hightest).")
 
 
 @bot.event

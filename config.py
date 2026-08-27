@@ -18,9 +18,8 @@ STAFF_ROLE_ID = int(os.getenv("STAFF_ROLE_ID", "0"))
 TICKET_CATEGORY_ID = int(os.getenv("TICKET_CATEGORY_ID", "0"))
 EXTRA_STAFF_ROLE_IDS = [int(os.getenv("EXTRA_STAFF_ROLE_IDS", "0"))] if os.getenv("EXTRA_STAFF_ROLE_IDS") else []
 ALLOWED_USER_IDS = [int(x.strip()) for x in os.getenv("ALLOWED_USER_IDS", "").split(",") if x.strip()]
+BOT_COMMANDS_CHANNEL_ID = int(os.getenv("BOT_COMMANDS", "0"))
 
-DEBUG_ALLOWED_USERS = []
-DEBUG_ALLOWED_ROLES = [1483822408182796418]
 REGULATOR_ROLE_ID = 1483822408182796418
 TESTER_ROLE_ID = 1469755118634270864
 
@@ -28,8 +27,6 @@ TESTER_ROLE_ID = 1469755118634270864
 # can give/record tiers (Recording Test Result). Admin always overrides.
 TIER_GIVER_ROLE_ID = 1521916878321090652
 
-TGF_COOLDOWN_DAYS = int(os.getenv("TGF_COOLDOWN_DAYS", "14"))
-TGF_LOG_CHANNEL_ID = int(os.getenv("TGF_LOG_CHANNEL_ID", "0"))
 BAN_CHANNEL_ID = int(os.getenv("BAN_CHANNEL_ID", "0"))
 WELCOME_CHANNEL_ID = int(os.getenv("WELCOME_CHANNEL_ID", "1496272517759897751"))
 HIGH_TEST_CHANNEL_ID = int(os.getenv("HIGH_TEST_CHANNEL_ID", "0"))
@@ -91,8 +88,6 @@ TICKET_TYPES = [
     ("Sword", "sword", "<:sword:1489190989150163034>"),
     ("Axe", "axe", "<:axe:1489190775085338817>"),
     ("Mace", "mace", "<:mace:1489190873777438791>"),
-    ("SpearMace", "spearmace", "<:spearmace:1489190973400416359>"),
-    ("SpearElytra", "spearelytra", "<:spearelytra:1489190973400416359>"),
 ]
 
 # Combined list for all gamemodes
@@ -127,13 +122,11 @@ POINTS = {
 
 GAMEMODE_ALIASES = {
     "nethpot": "nethpot", "uhc": "uhc",
-    "spearmace": "spearmace", "spearelytra": "spearelytra",
 }
 
 GAMEMODE_DISPLAY_NAMES = {
     "vanilla": "Vanilla", "uhc": "UHC", "pot": "Pot", "nethpot": "NethPot",
     "smp": "SMP", "sword": "Sword", "axe": "Axe", "mace": "Mace",
-    "spearmace": "SpearMace", "spearelytra": "SpearElytra",
 }
 
 GAMEMODE_INDICATORS = {
@@ -145,9 +138,6 @@ GAMEMODE_INDICATORS = {
     "nethpot": "<:nethpot:1489190890550464543>",
     "smp": "<:smp:1489190957306871938>", 
     "axe": "<:axe:1489190775085338817>",
-    "spearmace": "<:spearelytra:1489190973400416359>",  # Fixed Spear emoji ID
-    "spearelytra": "<:spearelytra:1489190973400416359>",
-    "spear": "<:spearelytra:1489190973400416359>",      # Plain 'spear' alias
 }
 
 # ==========================================
