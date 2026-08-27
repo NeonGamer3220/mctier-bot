@@ -43,12 +43,48 @@ intents.message_content = True
 intents.members = True
 intents.guilds = True
 
-bot = commands.Bot(command_prefix="!", intents=intents)
+
+class MCTierBot(commands.Bot):
+    async def setup_hook(self) -> None:
+        # Load cogs
+        for ext in INITIAL_EXTENSIONS:
+            try:
+                await self.load_extension(ext)
+                log.info("Successfully loaded extension: %s", ext)
+            except Exception as exc:
+                log.error("Error loading extension %s: %s", ext, exc)
+
+        register_persistent_views(self)
+
+        # Command sync - runs once, at actual startup (not on every reconnect).
+        try:
+            guild_id = getattr(config, "guild_id", 0) or int(os.getenv("GUILD_ID", "0"))
+            if guild_id:
+                # Instant sync: copy the global command tree straight into the
+                # dev/production guild, so new/changed commands show up there
+                # within seconds instead of waiting on Discord's global rollout.
+                guild_obj = discord.Object(id=guild_id)
+                self.tree.copy_global_to(guild=guild_obj)
+                guild_synced = await self.tree.sync(guild=guild_obj)
+                log.info("Instantly synced %d commands to guild %s.", len(guild_synced), guild_id)
+            else:
+                log.warning("GUILD_ID is not set - skipping instant guild sync, only the slow global sync will run.")
+
+            # Global sync - still needed so the commands are available in any
+            # other server the bot might be in, but can take up to an hour
+            # to propagate on Discord's side.
+            synced = await self.tree.sync()
+            log.info("Successfully synced %d global commands.", len(synced))
+        except Exception as exc:
+            log.error("Error syncing commands: %s", exc)
+
+
+bot = MCTierBot(command_prefix="!", intents=intents)
 
 _persistent_views_registered = False
 
 
-def register_persistent_views() -> None:
+def register_persistent_views(bot: commands.Bot) -> None:
     """
     Registers all 'static' (non-unique, ticket/user-independent)
     button/dropdown panel Views, so they keep working AFTER a restart
@@ -81,31 +117,9 @@ def register_persistent_views() -> None:
 async def on_ready():
     log.info("Main bot started: %s (ID: %s)", bot.user, bot.user.id)
 
-    register_persistent_views()
-
-    try:
-        # 1. Clear any server-level (Guild) command duplicates
-        for guild in bot.guilds:
-            bot.tree.clear_commands(guild=guild)
-            await bot.tree.sync(guild=guild)
-        
-        # 2. Sync the global commands
-        synced = await bot.tree.sync()
-        log.info("Successfully cleared and synced %d global commands.", len(synced))
-    except Exception as exc:
-        log.error("Error syncing commands: %s", exc)
-
 
 async def main():
     async with bot:
-        # Load cogs
-        for ext in INITIAL_EXTENSIONS:
-            try:
-                await bot.load_extension(ext)
-                log.info("Successfully loaded extension: %s", ext)
-            except Exception as exc:
-                log.error("Error loading extension %s: %s", ext, exc)
-
         # Start the bot using the token
         token = os.getenv("DISCORD_TOKEN") or getattr(config, "DISCORD_TOKEN", None)
         if not token:
