@@ -19,6 +19,7 @@ TICKET_CATEGORY_ID = int(os.getenv("TICKET_CATEGORY_ID", "0"))
 EXTRA_STAFF_ROLE_IDS = [int(os.getenv("EXTRA_STAFF_ROLE_IDS", "0"))] if os.getenv("EXTRA_STAFF_ROLE_IDS") else []
 ALLOWED_USER_IDS = [int(x.strip()) for x in os.getenv("ALLOWED_USER_IDS", "").split(",") if x.strip()]
 BOT_COMMANDS_CHANNEL_ID = int(os.getenv("BOT_COMMANDS", "0"))
+QUEUES_CATEGORY = int(os.getenv("QUEUES_CATEGORY", "0"))
 
 REGULATOR_ROLE_ID = 1483822408182796418
 TESTER_ROLE_ID = 1469755118634270864

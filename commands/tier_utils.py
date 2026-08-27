@@ -9,7 +9,7 @@ import io
 import datetime
 import aiohttp
 
-from config import ARCHIVE_CHANNEL_ID
+from config import ARCHIVE_CHANNEL_ID, QUEUES_CATEGORY
 from database import (
     get_cooldown_expiry_async, set_cooldown_async, delete_cooldown_async,
     is_dm_optout_async, set_dm_optout_async, save_ticket_archive_async
@@ -66,7 +66,8 @@ def get_ticket_category(guild: discord.Guild):
     return guild.get_channel(MODERN_CATEGORY_ID)
 
 def get_queue_category(guild: discord.Guild):
-    return guild.get_channel(MODERN_QUEUE_CATEGORY_ID)
+    category_id = QUEUES_CATEGORY or MODERN_QUEUE_CATEGORY_ID
+    return guild.get_channel(category_id)
 
 async def check_timeout(user_id: int, gamemode: str):
     """Checks whether the player is on a testing cooldown for this gamemode. Backed by the database."""

@@ -170,8 +170,8 @@ class TierSystemCog(commands.Cog):
     async def pingpanel(self, interaction: discord.Interaction, channel: discord.TextChannel = None):
         target_channel = channel or interaction.channel
         embed = discord.Embed(
-            title="🔔 Notifications & Pings",
-            description="Choose a category for notifications from the dropdown menu below!",
+            title="🔔 Enter A Waitlist",
+            description="Choose a gamemode from the dropdown menu below to join its waitlist! You'll get pinged whenever a queue opens for it.",
             color=discord.Color.blue()
         )
         embed.set_footer(text="MCTier Management System")

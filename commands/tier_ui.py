@@ -579,10 +579,10 @@ class PanelSelect(discord.ui.Select):
 
             if role in user.roles:
                 await user.remove_roles(role, reason="Ping panel - unsubscribed")
-                await interaction.response.send_message(f"❌ You have **unsubscribed** from this ping: **{label}**", ephemeral=True)
+                await interaction.response.send_message(f"❌ You have been **removed** from the **{label}** waitlist.", ephemeral=True)
             else:
                 await user.add_roles(role, reason="Ping panel - subscribed")
-                await interaction.response.send_message(f"✅ You have **subscribed** to this ping: **{label}**", ephemeral=True)
+                await interaction.response.send_message(f"✅ Added you to the **{label}** waitlist! You will get a notification when a queue opens.", ephemeral=True)
             return
 
         # 2. HIGHTEST PANEL (High Test Ticket - requesting a higher tier in a given gamemode)
