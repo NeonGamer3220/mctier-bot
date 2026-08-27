@@ -1,0 +1,112 @@
+[
+  {
+    "channel_name": "queue-sword",
+    "channel_id": 1536294052369268746,
+    "closed_by": "andis_969",
+    "closed_by_id": 1415022474579673120,
+    "reason": "Várólista lezárva",
+    "message_count": 1,
+    "archive_message_id": 1536294093741629491,
+    "archive_channel_id": 1530660149348270221,
+    "closed_at": "2026-08-10T08:44:15.348617+00:00"
+  },
+  {
+    "channel_name": "queue-spearmace",
+    "channel_id": 1536290652403277844,
+    "closed_by": "koppany__",
+    "closed_by_id": 749572096123863040,
+    "reason": "Várólista lezárva",
+    "message_count": 1,
+    "archive_message_id": 1536311599848231004,
+    "archive_channel_id": 1530660149348270221,
+    "closed_at": "2026-08-10T09:53:48.962842+00:00"
+  },
+  {
+    "channel_name": "test-itsandis",
+    "channel_id": 1536323365747560530,
+    "closed_by": "andis_969",
+    "closed_by_id": 1415022474579673120,
+    "reason": "Teszt eredmény rögzítve: LT4",
+    "message_count": 14,
+    "archive_message_id": 1536324702459535423,
+    "archive_channel_id": 1530660149348270221,
+    "closed_at": "2026-08-10T10:45:53.006354+00:00"
+  },
+  {
+    "channel_name": "queue-smp",
+    "channel_id": 1536322470561316894,
+    "closed_by": "keviin1495",
+    "closed_by_id": 649276313395396609,
+    "reason": "Várólista lezárva",
+    "message_count": 1,
+    "archive_message_id": 1536324960614883401,
+    "archive_channel_id": 1530660149348270221,
+    "closed_at": "2026-08-10T10:46:54.542907+00:00"
+  },
+  {
+    "channel_name": "test-itsandis",
+    "channel_id": 1536325090571194458,
+    "closed_by": "andis_969",
+    "closed_by_id": 1415022474579673120,
+    "reason": "Teszt eredmény rögzítve: LT4",
+    "message_count": 16,
+    "archive_message_id": 1536326440348553270,
+    "archive_channel_id": 1530660149348270221,
+    "closed_at": "2026-08-10T10:52:47.302899+00:00"
+  },
+  {
+    "channel_name": "queue-diasmp",
+    "channel_id": 1536325038192722021,
+    "closed_by": "keviin1495",
+    "closed_by_id": 649276313395396609,
+    "reason": "Várólista lezárva",
+    "message_count": 1,
+    "archive_message_id": 1536326870759637068,
+    "archive_channel_id": 1530660149348270221,
+    "closed_at": "2026-08-10T10:54:30.033287+00:00"
+  },
+  {
+    "channel_name": "queue-uhc",
+    "channel_id": 1536326872252813363,
+    "closed_by": "keviin1495",
+    "closed_by_id": 649276313395396609,
+    "reason": "Várólista lezárva",
+    "message_count": 1,
+    "archive_message_id": 1536327592750088208,
+    "archive_channel_id": 1530660149348270221,
+    "closed_at": "2026-08-10T10:57:22.024674+00:00"
+  },
+  {
+    "channel_name": "test-itsandis",
+    "channel_id": 1536327989128601751,
+    "closed_by": "andis_969",
+    "closed_by_id": 1415022474579673120,
+    "reason": "Teszt eredmény rögzítve: HT5",
+    "message_count": 10,
+    "archive_message_id": 1536328823262552206,
+    "archive_channel_id": 1530660149348270221,
+    "closed_at": "2026-08-10T11:02:15.382660+00:00"
+  },
+  {
+    "channel_name": "queue-cart",
+    "channel_id": 1536327591634534430,
+    "closed_by": "keviin1495",
+    "closed_by_id": 649276313395396609,
+    "reason": "Várólista lezárva",
+    "message_count": 1,
+    "archive_message_id": 1536328850647162970,
+    "archive_channel_id": 1530660149348270221,
+    "closed_at": "2026-08-10T11:02:22.005093+00:00"
+  },
+  {
+    "channel_name": "test-bogyi01",
+    "channel_id": 1536331637556641863,
+    "closed_by": "neongamer322_17889",
+    "closed_by_id": 1335330940980826122,
+    "reason": "Teszt lezárva eredmény nélkül",
+    "message_count": 3,
+    "archive_message_id": 1536331890133307453,
+    "archive_channel_id": 1530660149348270221,
+    "closed_at": "2026-08-10T11:14:26.511148+00:00"
+  }
+]
