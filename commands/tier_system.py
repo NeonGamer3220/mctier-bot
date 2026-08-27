@@ -164,68 +164,47 @@ class TierSystemCog(commands.Cog):
             )
         await interaction.followup.send(embed=embed, ephemeral=True)
 
-    @app_commands.command(name="pingpanel", description="Sends the ping panel with a Modern or Legacy option (dropdown).")
-    @app_commands.describe(
-        type="Choose whether you want the Modern or Legacy panel.",
-        channel="The target channel to send the panel to."
-    )
-    @app_commands.choices(type=[
-        app_commands.Choice(name="Modern", value="Modern"),
-        app_commands.Choice(name="Legacy", value="Legacy")
-    ])
+    @app_commands.command(name="pingpanel", description="Sends the ping panel (dropdown).")
+    @app_commands.describe(channel="The target channel to send the panel to.")
     @app_commands.checks.has_permissions(administrator=True)
-    async def pingpanel(self, interaction: discord.Interaction, type: str, channel: discord.TextChannel = None):
+    async def pingpanel(self, interaction: discord.Interaction, channel: discord.TextChannel = None):
         target_channel = channel or interaction.channel
         embed = discord.Embed(
-            title=f"🔔 Notifications & Pings ({type})",
-            description=f"Choose the **{type}** category for notifications from the dropdown menu below!",
-            color=discord.Color.blue() if type == "Modern" else discord.Color.dark_blue()
+            title="🔔 Notifications & Pings",
+            description="Choose a category for notifications from the dropdown menu below!",
+            color=discord.Color.blue()
         )
         embed.set_footer(text="MCTier Management System")
-        await target_channel.send(embed=embed, view=PanelSelectView(type, "ping"))
-        await interaction.response.send_message(f"✅ {type} Ping panel sent to: {target_channel.mention}", ephemeral=True)
+        await target_channel.send(embed=embed, view=PanelSelectView("ping"))
+        await interaction.response.send_message(f"✅ Ping panel sent to: {target_channel.mention}", ephemeral=True)
 
-    @app_commands.command(name="queuepanel", description="Sends the queue panel with a Modern or Legacy option (dropdown).")
-    @app_commands.describe(
-        type="Choose whether you want the Modern or Legacy panel.",
-        channel="The target channel to send the panel to."
-    )
-    @app_commands.choices(type=[
-        app_commands.Choice(name="Modern", value="Modern"),
-        app_commands.Choice(name="Legacy", value="Legacy")
-    ])
+    @app_commands.command(name="queuepanel", description="Sends the queue panel (dropdown).")
+    @app_commands.describe(channel="The target channel to send the panel to.")
     @app_commands.checks.has_permissions(administrator=True)
-    async def queuepanel(self, interaction: discord.Interaction, type: str, channel: discord.TextChannel = None):
+    async def queuepanel(self, interaction: discord.Interaction, channel: discord.TextChannel = None):
         target_channel = channel or interaction.channel
         embed = discord.Embed(
-            title=f"🎮 Queue Panel ({type})",
-            description=f"Choose the **{type}** gamemode from the menu below to open the queue.",
-            color=discord.Color.green() if type == "Modern" else discord.Color.dark_green()
+            title="🎮 Queue Panel",
+            description="Choose a gamemode from the menu below to open the queue.",
+            color=discord.Color.green()
         )
         embed.set_footer(text="MCTier Management System")
-        await target_channel.send(embed=embed, view=PanelSelectView(type, "queue"))
-        await interaction.response.send_message(f"✅ {type} Queue panel sent to: {target_channel.mention}", ephemeral=True)
+        await target_channel.send(embed=embed, view=PanelSelectView("queue"))
+        await interaction.response.send_message(f"✅ Queue panel sent to: {target_channel.mention}", ephemeral=True)
 
-    @app_commands.command(name="hightestpanel", description="Sends the high tier test panel with a Modern or Legacy option (dropdown).")
-    @app_commands.describe(
-        type="Choose whether you want the Modern or Legacy panel.",
-        channel="The target channel to send the panel to."
-    )
-    @app_commands.choices(type=[
-        app_commands.Choice(name="Modern", value="Modern"),
-        app_commands.Choice(name="Legacy", value="Legacy")
-    ])
+    @app_commands.command(name="hightestpanel", description="Sends the high tier test panel (dropdown).")
+    @app_commands.describe(channel="The target channel to send the panel to.")
     @app_commands.checks.has_permissions(administrator=True)
-    async def hightestpanel(self, interaction: discord.Interaction, type: str, channel: discord.TextChannel = None):
+    async def hightestpanel(self, interaction: discord.Interaction, channel: discord.TextChannel = None):
         target_channel = channel or interaction.channel
         embed = discord.Embed(
-            title=f"⚔️ High Tier Tests ({type})",
-            description=f"Choose the **{type}** High Tier level from the menu below to open the ticket.",
-            color=discord.Color.purple() if type == "Modern" else discord.Color.dark_purple()
+            title="⚔️ High Tier Tests",
+            description="Choose a High Tier level from the menu below to open the ticket.",
+            color=discord.Color.purple()
         )
         embed.set_footer(text="MCTier Management System")
-        await target_channel.send(embed=embed, view=PanelSelectView(type, "hightest"))
-        await interaction.response.send_message(f"✅ {type} High-Test panel sent to: {target_channel.mention}", ephemeral=True)
+        await target_channel.send(embed=embed, view=PanelSelectView("hightest"))
+        await interaction.response.send_message(f"✅ High-Test panel sent to: {target_channel.mention}", ephemeral=True)
 
 
 async def setup(bot: commands.Bot):

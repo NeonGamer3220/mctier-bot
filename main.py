@@ -102,9 +102,8 @@ def register_persistent_views(bot: commands.Bot) -> None:
     from commands.tgf import TGFPanelView
     from commands.idea_channel import IdeaVoteView
 
-    for mode_type in ("Modern", "Legacy"):
-        for action_type in ("ping", "queue", "hightest"):
-            bot.add_view(PanelSelectView(mode_type, action_type))
+    for action_type in ("ping", "queue", "hightest"):
+        bot.add_view(PanelSelectView(action_type))
 
     bot.add_view(TGFPanelView())
     bot.add_view(IdeaVoteView())

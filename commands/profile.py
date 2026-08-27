@@ -8,7 +8,6 @@ from discord import app_commands
 from discord.ext import commands
 
 from config import (
-    LEGACY_TICKET_TYPES,
     get_gamemode_display_name,
     get_gamemode_indicator,
     normalize_gamemode,
@@ -20,8 +19,6 @@ from database import (
 )
 
 log = logging.getLogger("mctier.commands.profile")
-
-LEGACY_KEYS = {key.lower() for _, key, _ in LEGACY_TICKET_TYPES}
 
 
 def _columns(entries: list[str], columns: int = 3) -> list[str]:
@@ -88,8 +85,7 @@ class ProfileCog(commands.Cog):
         embed.add_field(name="Discord Account", value=mention_str, inline=True)
         embed.set_thumbnail(url=f"https://minotar.net/helm/{mc_name}/256.png")
 
-        modern_results = []
-        legacy_results = []
+        results = []
 
         if db._client:
             try:
@@ -106,28 +102,15 @@ class ProfileCog(commands.Cog):
                 display_name = get_gamemode_display_name(raw_mode)
 
                 indicator = get_gamemode_indicator(norm_mode)
-                entry = f"{indicator} **{display_name}:** `{rank}`"
+                results.append(f"{indicator} **{display_name}:** `{rank}`")
 
-                if norm_mode in LEGACY_KEYS:
-                    legacy_results.append(entry)
-                else:
-                    modern_results.append(entry)
-
-        # --- Modern results, in 3 columns ---
-        embed.add_field(name="📊 Modern Tier Results", value="\u200b", inline=False)
-        if modern_results:
-            for col in _columns(modern_results, 3):
+        # --- Tier results, in 3 columns ---
+        embed.add_field(name="📊 Tier Results", value="\u200b", inline=False)
+        if results:
+            for col in _columns(results, 3):
                 embed.add_field(name="\u200b", value=col[:1024], inline=True)
         else:
-            embed.add_field(name="\u200b", value="*No modern results recorded.*", inline=False)
-
-        # --- Legacy results, in 3 columns ---
-        embed.add_field(name="📜 Legacy Tier Results", value="\u200b", inline=False)
-        if legacy_results:
-            for col in _columns(legacy_results, 3):
-                embed.add_field(name="\u200b", value=col[:1024], inline=True)
-        else:
-            embed.add_field(name="\u200b", value="*No legacy results recorded.*", inline=False)
+            embed.add_field(name="\u200b", value="*No results recorded.*", inline=False)
 
         embed.set_footer(text=f"MCTier • Retrieved: {interaction.created_at.strftime('%Y-%m-%d %H:%M')}")
 

@@ -34,10 +34,7 @@ async def fetch_3d_skin_file(mc_username: str, filename: str = "skin.png"):
         return None
 
 MODERN_CATEGORY_ID = 1469766438238687496
-LEGACY_CATEGORY_ID = 1520523939225276536
-
 MODERN_QUEUE_CATEGORY_ID = 1478400462225936496
-LEGACY_QUEUE_CATEGORY_ID = 1520384820612567202
 
 THEME_LIGHT_PURPLE = 0x9b59b6
 THEME_LIGHT_BLUE = 0x3498db
@@ -65,13 +62,11 @@ async def set_dm_optout(user_id: int) -> None:
     await set_dm_optout_async(user_id)
 
 
-def get_ticket_category(guild: discord.Guild, is_legacy: bool):
-    cat_id = LEGACY_CATEGORY_ID if is_legacy else MODERN_CATEGORY_ID
-    return guild.get_channel(cat_id)
+def get_ticket_category(guild: discord.Guild):
+    return guild.get_channel(MODERN_CATEGORY_ID)
 
-def get_queue_category(guild: discord.Guild, is_legacy: bool):
-    cat_id = LEGACY_QUEUE_CATEGORY_ID if is_legacy else MODERN_QUEUE_CATEGORY_ID
-    return guild.get_channel(cat_id)
+def get_queue_category(guild: discord.Guild):
+    return guild.get_channel(MODERN_QUEUE_CATEGORY_ID)
 
 async def check_timeout(user_id: int, gamemode: str):
     """Checks whether the player is on a testing cooldown for this gamemode. Backed by the database."""

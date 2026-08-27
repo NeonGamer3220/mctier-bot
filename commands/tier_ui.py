@@ -6,7 +6,7 @@ High Test suggestion submission modal (does not close the channel immediately) a
 import discord
 import asyncio
 import time
-from config import TICKET_TYPES, LEGACY_TICKET_TYPES, ALL_TICKET_TYPES, get_gamemode_display_name, get_rank_full_name, STAFF_ROLE_ID, REGULATOR_ROLE_ID, RANKS, MODERN_RESULT_CHANNEL_ID, LEGACY_RESULT_CHANNEL_ID, LOG_CHANNEL_ID, TIER_GIVER_ROLE_ID, TESTER_ROLE_ID
+from config import TICKET_TYPES, ALL_TICKET_TYPES, get_gamemode_display_name, get_rank_full_name, STAFF_ROLE_ID, REGULATOR_ROLE_ID, RANKS, MODERN_RESULT_CHANNEL_ID, LOG_CHANNEL_ID, TIER_GIVER_ROLE_ID, TESTER_ROLE_ID
 from commands.tier_utils import (
     ACTIVE_QUEUES, INACTIVE_TICKETS, VALID_HT_TIERS, ALLOWED_QUEUE_TIERS,
     get_ticket_category, get_queue_category, update_queue_message, 
@@ -245,13 +245,12 @@ class TestFeedbackView(discord.ui.View):
 
 
 class TestResultModal(discord.ui.Modal, title="Record Test Result"):
-    def __init__(self, player_id: int, player_mc: str, gamemode: str, queue_ch_id: int = None, is_legacy: bool = False):
+    def __init__(self, player_id: int, player_mc: str, gamemode: str, queue_ch_id: int = None):
         super().__init__()
         self.player_id = player_id
         self.player_mc = player_mc
         self.gamemode = gamemode
         self.queue_ch_id = queue_ch_id
-        self.is_legacy = is_legacy
 
         self.tier_input = discord.ui.TextInput(
             label="Achieved Rank (Tier)",
@@ -300,9 +299,8 @@ class TestResultModal(discord.ui.Modal, title="Record Test Result"):
 
         await interaction.followup.send(f"✅ Successfully recorded! Player: **{self.player_mc}** | Rank: **{tier}**", ephemeral=True)
 
-        # Post the result in the appropriate (Modern/Legacy) results channel
-        results_chan_id = LEGACY_RESULT_CHANNEL_ID if self.is_legacy else MODERN_RESULT_CHANNEL_ID
-        results_chan = guild.get_channel(results_chan_id) if results_chan_id else None
+        # Post the result in the results channel
+        results_chan = guild.get_channel(MODERN_RESULT_CHANNEL_ID) if MODERN_RESULT_CHANNEL_ID else None
         if results_chan:
             content = (
                 f"{player_user.mention}\n\n"
@@ -343,13 +341,12 @@ class TestResultModal(discord.ui.Modal, title="Record Test Result"):
 
 
 class TestTicketView(discord.ui.View):
-    def __init__(self, player_id: int, player_mc: str, gamemode: str, queue_ch_id: int = None, is_legacy: bool = False):
+    def __init__(self, player_id: int, player_mc: str, gamemode: str, queue_ch_id: int = None):
         super().__init__(timeout=None)
         self.player_id = player_id
         self.player_mc = player_mc
         self.gamemode = gamemode
         self.queue_ch_id = queue_ch_id
-        self.is_legacy = is_legacy
 
     @discord.ui.button(label="📝 Record Result", style=discord.ButtonStyle.green, custom_id="test_record_result")
     async def record_result(self, interaction: discord.Interaction, button: discord.ui.Button):
@@ -360,8 +357,7 @@ class TestTicketView(discord.ui.View):
             player_id=self.player_id,
             player_mc=self.player_mc,
             gamemode=self.gamemode,
-            queue_ch_id=self.queue_ch_id,
-            is_legacy=self.is_legacy
+            queue_ch_id=self.queue_ch_id
         )
         await interaction.response.send_modal(modal)
 
@@ -393,11 +389,10 @@ class TestTicketView(discord.ui.View):
 
 
 class QueueActiveView(discord.ui.View):
-    def __init__(self, mode_key: str, tester_role: discord.Role, is_legacy: bool):
+    def __init__(self, mode_key: str, tester_role: discord.Role):
         super().__init__(timeout=None)
         self.mode_key = mode_key
         self.tester_role = tester_role
-        self.is_legacy = is_legacy
 
     @discord.ui.button(label="➕ Join / ➖ Leave", style=discord.ButtonStyle.blurple, custom_id="queue_join_leave_toggle")
     async def join_leave_toggle(self, interaction: discord.Interaction, button: discord.ui.Button):
@@ -457,14 +452,14 @@ class QueueActiveView(discord.ui.View):
             return await interaction.response.send_message("❌ There is no player who isn't already being tested!", ephemeral=True)
 
         await interaction.response.defer(ephemeral=True)
-        target_player["status"] = "🧪 TESZT"
+        target_player["status"] = "🧪 TESTING"
         try:
             await update_queue_message(interaction.message, q_data, self.mode_key)
         except Exception:
             pass
 
         guild = interaction.guild
-        category = get_queue_category(guild, self.is_legacy)
+        category = get_queue_category(guild)
 
         player_user = guild.get_member(target_player["id"]) or await guild.fetch_member(target_player["id"])
         regulator_role = guild.get_role(REGULATOR_ROLE_ID)
@@ -501,7 +496,7 @@ class QueueActiveView(discord.ui.View):
             description=f"Player: <@{target_player['id']}> (**{target_player['mc']}**)\nTester: {interaction.user.mention}\n\nClick the button below to record the result!",
             color=discord.Color.blue()
         )
-        await test_chan.send(content=f"{player_user.mention} {interaction.user.mention}", embed=embed, view=TestTicketView(target_player['id'], target_player['mc'], self.mode_key, ch_id, self.is_legacy))
+        await test_chan.send(content=f"{player_user.mention} {interaction.user.mention}", embed=embed, view=TestTicketView(target_player['id'], target_player['mc'], self.mode_key, ch_id))
         await interaction.followup.send(f"✅ Next player called! Test channel: {test_chan.mention}", ephemeral=True)
 
         if not await is_dm_optout(target_player['id']):
@@ -535,15 +530,12 @@ class QueueActiveView(discord.ui.View):
 
 
 class PanelSelectView(discord.ui.View):
-    def __init__(self, mode_type: str, action_type: str):
+    def __init__(self, action_type: str):
         super().__init__(timeout=None)
-        self.mode_type = mode_type
         self.action_type = action_type
-        
-        types_list = LEGACY_TICKET_TYPES if mode_type.lower() == "legacy" else TICKET_TYPES
-        
+
         options = []
-        for lbl, key, emoji in types_list[:25]:
+        for lbl, key, emoji in TICKET_TYPES[:25]:
             emoji_str = str(emoji)
             if emoji_str.isdigit():
                 emoji_str = f"<:{lbl.replace(' ', '')}:{emoji_str}>"
@@ -553,29 +545,27 @@ class PanelSelectView(discord.ui.View):
                 options.append(discord.SelectOption(label=lbl, value=key))
 
         if options:
-            self.add_item(PanelSelect(options, mode_type, action_type))
+            self.add_item(PanelSelect(options, action_type))
 
 
 class PanelSelect(discord.ui.Select):
-    def __init__(self, options, mode_type: str, action_type: str):
+    def __init__(self, options, action_type: str):
         placeholders = {
-            "ping": f"Choose a notification category ({mode_type.upper()})...",
-            "queue": f"Choose a gamemode for the queue ({mode_type.upper()})...",
-            "hightest": f"Choose a High Tier level ({mode_type.upper()})..."
+            "ping": "Choose a notification category...",
+            "queue": "Choose a gamemode for the queue...",
+            "hightest": "Choose a High Tier level..."
         }
         super().__init__(
             placeholder=placeholders.get(action_type, "Choose..."),
             min_values=1,
             max_values=1,
             options=options,
-            custom_id=f"panel_{action_type}_{mode_type.lower()}"
+            custom_id=f"panel_{action_type}"
         )
         self.action_type = action_type
-        self.mode_type = mode_type
 
     async def callback(self, interaction: discord.Interaction):
         key = self.values[0]  # e.g. "HT4" or a gamemode key
-        is_legacy = (self.mode_type.lower() == "legacy")
         guild = interaction.guild
         user = interaction.user
 
@@ -590,10 +580,10 @@ class PanelSelect(discord.ui.Select):
 
             if role in user.roles:
                 await user.remove_roles(role, reason="Ping panel - unsubscribed")
-                await interaction.response.send_message(f"❌ You have **unsubscribed** from this ping: **{label}** ({self.mode_type})", ephemeral=True)
+                await interaction.response.send_message(f"❌ You have **unsubscribed** from this ping: **{label}**", ephemeral=True)
             else:
                 await user.add_roles(role, reason="Ping panel - subscribed")
-                await interaction.response.send_message(f"✅ You have **subscribed** to this ping: **{label}** ({self.mode_type})", ephemeral=True)
+                await interaction.response.send_message(f"✅ You have **subscribed** to this ping: **{label}**", ephemeral=True)
             return
 
         # 2. HIGHTEST PANEL (High Test Ticket - requesting a higher tier in a given gamemode)
@@ -622,7 +612,7 @@ class PanelSelect(discord.ui.Select):
                     ephemeral=True
                 )
 
-            category = get_ticket_category(guild, is_legacy)
+            category = get_ticket_category(guild)
 
             tester_role = _find_gamemode_tester_role(guild, label)
             regulator_role = guild.get_role(REGULATOR_ROLE_ID)
@@ -642,7 +632,7 @@ class PanelSelect(discord.ui.Select):
                     name=f"hightest-{key.lower()}-{mc_name.lower()}",
                     category=category,
                     overwrites=overwrites,
-                    topic=f"High Test Ticket - {label} ({self.mode_type}) | Player: {mc_name} | Current rank: {current_tier}"
+                    topic=f"High Test Ticket - {label} | Player: {mc_name} | Current rank: {current_tier}"
                 )
             except Exception as e:
                 return await interaction.followup.send(f"❌ Failed to create High Test channel: `{e}`", ephemeral=True)
@@ -655,7 +645,7 @@ class PanelSelect(discord.ui.Select):
 
             reg_ping = f"<@&{REGULATOR_ROLE_ID}>" if regulator_role else ""
             embed = discord.Embed(
-                title=f"⚔️ High Tier Test: {label} ({self.mode_type})",
+                title=f"⚔️ High Tier Test: {label}",
                 description=(
                     f"Player: {user.mention} (**{mc_name}**)\n"
                     f"Current rank in this mode: **{current_tier}**\n\n"
@@ -675,7 +665,7 @@ class PanelSelect(discord.ui.Select):
             return await interaction.response.send_message(deny_reason, ephemeral=True)
 
         await interaction.response.defer(ephemeral=True)
-        category = get_queue_category(guild, is_legacy)
+        category = get_queue_category(guild)
         
         tester_role = _find_gamemode_tester_role(guild, label)
 
@@ -692,7 +682,7 @@ class PanelSelect(discord.ui.Select):
                 name=f"queue-{key.lower()}",
                 category=category,
                 overwrites=overwrites,
-                topic=f"MCTier Queue - {label} ({self.mode_type})"
+                topic=f"MCTier Queue - {label}"
             )
         except Exception as e:
             return await interaction.followup.send(f"❌ Failed to create channel: `{e}`", ephemeral=True)
@@ -715,11 +705,11 @@ class PanelSelect(discord.ui.Select):
 
         desc = f"**Spots:** 0/20\n\n**Players in queue:**\n*- Empty -*\n\n**Active Testers:**\n🛡️ <@{user.id}>\n"
         embed = discord.Embed(
-            title=f"{emoji_str} {label} Queue ({self.mode_type})", 
+            title=f"{emoji_str} {label} Queue", 
             description=desc, 
             color=discord.Color(THEME_LIGHT_PURPLE)
         )
         
-        msg = await queue_chan.send(content=f"🔔 {q_ping}", embed=embed, view=QueueActiveView(key, tester_role, is_legacy))
+        msg = await queue_chan.send(content=f"🔔 {q_ping}", embed=embed, view=QueueActiveView(key, tester_role))
         ACTIVE_QUEUES[queue_chan.id]["msg_id"] = msg.id
         await interaction.followup.send(f"✅ Queue channel successfully opened: {queue_chan.mention}", ephemeral=True)

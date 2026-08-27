@@ -35,14 +35,12 @@ WELCOME_CHANNEL_ID = int(os.getenv("WELCOME_CHANNEL_ID", "1496272517759897751"))
 HIGH_TEST_CHANNEL_ID = int(os.getenv("HIGH_TEST_CHANNEL_ID", "0"))
 ELO_CHANNEL_ID = int(os.getenv("ELO_CHANNEL_ID", "1511015484403749004"))
 ELO_TICKET_CATEGORY_ID = int(os.getenv("ELO_TICKET_CATEGORY_ID", "1469766438238687496"))
-LEGACY_TICKET_CATEGORY_ID = int(os.getenv("LEGACY_TICKET_CATEGORY_ID", "1520523939225276536"))
 HELP_TICKET_CATEGORY_ID = int(os.getenv("HELP_TICKET_CATEGORY_ID", "1524391860687339733"))
 BANNED_ROLE_ID = int(os.getenv("BANNED_ROLE_ID", "1496877749388972143"))
 TIER_RESULTS_CHANNEL_ID = int(os.getenv("TIER_RESULTS_CHANNEL_ID", "0"))
 ARCHIVE_CHANNEL_ID = int(os.getenv("ARCHIVE_CHANNEL_ID", "0"))
 LOG_CHANNEL_ID = 1505522005028503582
 MODERN_RESULT_CHANNEL_ID = 1469752490965864651
-LEGACY_RESULT_CHANNEL_ID = 1520434272119423046
 
 # ==========================================
 # SYSTEM AND WEBSITE SETTINGS
@@ -61,11 +59,8 @@ HTTP_TIMEOUT_SECONDS = 10
 COOLDOWN_SECONDS = 14 * 24 * 60 * 60
 TESTS_TABLE = "tests"
 
-# Category for Modern (ELO) queue/test channels:
+# Category for the Modern (ELO) queue/test channels:
 ELO_TICKET_CATEGORY_ID = 1478400462225936496
-
-# Category for Legacy queue/test channels:
-LEGACY_TICKET_CATEGORY_ID = 1520384820612567202
 
 # Linking settings
 LINK_CODE_LENGTH = 8
@@ -107,18 +102,8 @@ TICKET_TYPES = [
     ("Trident", "trident", "<:trident:1505194733629210664>")
 ]
 
-LEGACY_TICKET_TYPES = [
-    ("Boxing", "boxing", "<:Boxing:1520465463358783639>"),
-    ("Combo", "combo", "<:Combo:1520465407474008147>"),
-    ("Bridge", "bridge", "<:Bridge:1520465430957916331>"),
-    ("No Debuff", "nodebuff", "<:NoDebuff:1520465050974814319>"),
-    ("OP", "op", "<:OP:1520465323680075937>"),
-    ("Soup", "soup", "<:Soup:1520465218096857280>"),
-    ("Fireball Fight", "fireballfight", "<:FireballFight:1520465183884181636>")
-]
-
 # Combined list for all gamemodes
-ALL_TICKET_TYPES = TICKET_TYPES + LEGACY_TICKET_TYPES
+ALL_TICKET_TYPES = TICKET_TYPES
 
 MODE_LIST = [t[0] for t in ALL_TICKET_TYPES]
 GAMEMODE_DISPLAY_TO_KEY = {display.lower(): key for display, key, _ in ALL_TICKET_TYPES}
@@ -151,7 +136,6 @@ GAMEMODE_ALIASES = {
     "ogv": "ogvanilla", "ogvanilla": "ogvanilla", "nethpot": "nethpot",
     "uhc": "uhc", "shieldlessuhc": "shieldlessuhc", "spearmace": "spearmace",
     "spearelytra": "spearelytra", "stickfight": "stickfight", "trident": "trident",
-    "nodebuff": "nodebuff", "fireballfight": "fireballfight"
 }
 
 GAMEMODE_DISPLAY_NAMES = {
@@ -160,9 +144,6 @@ GAMEMODE_DISPLAY_NAMES = {
     "creeper": "Creeper", "diasmp": "DiaSMP", "ogvanilla": "OGVanilla",
     "shieldlessuhc": "ShieldlessUHC", "spearmace": "SpearMace", "spearelytra": "SpearElytra",
     "stickfight": "Stick Fight", "trident": "Trident",
-    "boxing": "Boxing", "combo": "Combo", "bridge": "Bridge",
-    "nodebuff": "No Debuff", "op": "OP", "soup": "Soup", 
-    "fireballfight": "Fireball Fight"
 }
 
 GAMEMODE_INDICATORS = {
@@ -185,14 +166,6 @@ GAMEMODE_INDICATORS = {
     "stickfight": "<:stickfight:1502574877536948334>", 
     "stick fight": "<:stickfight:1502574877536948334>", 
     "trident": "<:trident:1505194733629210664>",
-    # Legacy modes
-    "boxing": "<:Boxing:1520465463358783639>", 
-    "combo": "<:Combo:1520465407474008147>",
-    "bridge": "<:Bridge:1520465430957916331>", 
-    "nodebuff": "<:NoDebuff:1520465050974814319>",
-    "op": "<:OP:1520465323680075937>", 
-    "soup": "<:Soup:1520465218096857280>", 
-    "fireballfight": "<:FireballFight:1520465183884181636>"
 }
 
 # ==========================================
