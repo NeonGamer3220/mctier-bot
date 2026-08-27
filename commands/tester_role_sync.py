@@ -8,11 +8,11 @@ Supabase `tests` table (per row, per gamemode). This cog periodically
 
 - General TESTER_ROLE_ID role: if a player has the Tester checkbox
   checked in ANY gamemode, they receive it; if not in any, it's removed.
-- Per-gamemode "{Gamemode} Tester" role (e.g. "DiaSMP Tester"): only
+- Per-gamemode "{Gamemode} Tester" role (e.g. "Sword Tester"): only
   granted for the gamemode where the Tester checkbox is actually
   checked. So if someone has the general Tester role but not the
-  DiaSMP Tester one, the queue-opening permission check
-  (see commands/tier_ui.py) won't let them open the DiaSMP queue.
+  Sword Tester one, the queue-opening permission check
+  (see commands/tier_ui.py) won't let them open the Sword queue.
 
 Player -> Discord ID resolution happens through the `linked_accounts`
 table (the same pattern as in ban_enforcement.py).
@@ -33,7 +33,7 @@ from database import (
 
 log = logging.getLogger("mctier.commands.tester_role_sync")
 
-# All known gamemode labels (e.g. "DiaSMP") that can have a corresponding
+# All known gamemode labels (e.g. "Sword") that can have a corresponding
 # "{label} Tester" Discord role on the server.
 _ALL_GAMEMODE_LABELS = [label for label, _key, _emoji in ALL_TICKET_TYPES]
 

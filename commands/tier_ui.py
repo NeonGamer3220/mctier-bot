@@ -41,7 +41,7 @@ def _can_open_queue(member: discord.Member, guild: discord.Guild, gamemode_label
     - Admin / Staff / Regulator can always open it.
     - Otherwise the member must have the general TESTER_ROLE_ID
       ("Tester") role, AND - if a role with that name exists on the
-      server - the "{gamemode_label} Tester" (e.g. "DiaSMP Tester")
+      server - the "{gamemode_label} Tester" (e.g. "Sword Tester")
       gamemode-specific role as well. If someone only has the general
       Tester role but not the one for the specific gamemode, they
       cannot open the queue in that mode.
@@ -537,10 +537,9 @@ class PanelSelectView(discord.ui.View):
         options = []
         for lbl, key, emoji in TICKET_TYPES[:25]:
             emoji_str = str(emoji)
-            if emoji_str.isdigit():
-                emoji_str = f"<:{lbl.replace(' ', '')}:{emoji_str}>"
             try:
-                options.append(discord.SelectOption(label=lbl, value=key, emoji=emoji_str if len(emoji_str) <= 20 else None))
+                parsed_emoji = discord.PartialEmoji.from_str(emoji_str)
+                options.append(discord.SelectOption(label=lbl, value=key, emoji=parsed_emoji))
             except Exception:
                 options.append(discord.SelectOption(label=lbl, value=key))
 

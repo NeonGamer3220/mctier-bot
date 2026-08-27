@@ -60,21 +60,30 @@ class MCTierBot(commands.Bot):
         try:
             guild_id = getattr(config, "guild_id", 0) or int(os.getenv("GUILD_ID", "0"))
             if guild_id:
-                # Instant sync: copy the global command tree straight into the
-                # dev/production guild, so new/changed commands show up there
-                # within seconds instead of waiting on Discord's global rollout.
+                # This bot only runs in one server, so sync commands as guild-scoped
+                # only. Guild syncs are instant (seconds) unlike global syncs (up to
+                # an hour), and registering the same commands both globally AND to
+                # the guild causes Discord to show every command TWICE in the
+                # slash-command picker for that guild - so we deliberately skip the
+                # global sync when a guild is configured.
                 guild_obj = discord.Object(id=guild_id)
                 self.tree.copy_global_to(guild=guild_obj)
                 guild_synced = await self.tree.sync(guild=guild_obj)
                 log.info("Instantly synced %d commands to guild %s.", len(guild_synced), guild_id)
-            else:
-                log.warning("GUILD_ID is not set - skipping instant guild sync, only the slow global sync will run.")
 
-            # Global sync - still needed so the commands are available in any
-            # other server the bot might be in, but can take up to an hour
-            # to propagate on Discord's side.
-            synced = await self.tree.sync()
-            log.info("Successfully synced %d global commands.", len(synced))
+                # One-time cleanup: earlier versions of this bot also registered
+                # commands globally, which stick around on Discord's side and keep
+                # showing up as duplicates alongside the guild-scoped ones above
+                # until they're explicitly cleared. Wiping the (now-empty) global
+                # tree removes those leftovers.
+                self.tree.clear_commands(guild=None)
+                await self.tree.sync()
+                log.info("Cleared leftover global commands.")
+            else:
+                # No guild configured - fall back to a global sync (can take up to
+                # an hour to propagate on Discord's side).
+                synced = await self.tree.sync()
+                log.info("Successfully synced %d global commands.", len(synced))
         except Exception as exc:
             log.error("Error syncing commands: %s", exc)
 

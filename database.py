@@ -506,7 +506,7 @@ async def get_tester_gamemode_rows_async() -> list[dict]:
     """
     Returns the (username, gamemode) pairs from the Supabase `tests`
     table where `is_tester = true`. This is needed to sync the
-    per-gamemode Tester Discord roles (e.g. "DiaSMP Tester") alongside
+    per-gamemode Tester Discord roles (e.g. "Sword Tester") alongside
     the global TESTER_ROLE_ID role - a player should only have the
     Tester role for the gamemodes checked on the website (Owner admin).
     """

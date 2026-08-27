@@ -91,15 +91,8 @@ TICKET_TYPES = [
     ("Sword", "sword", "<:sword:1489190989150163034>"),
     ("Axe", "axe", "<:axe:1489190775085338817>"),
     ("Mace", "mace", "<:mace:1489190873777438791>"),
-    ("Cart", "cart", "<:cart:1489190821390581860>"),
-    ("Creeper", "creeper", "<:creeper:1489190838763393104>"),
-    ("DiaSMP", "diasmp", "<:diasmp:1489190856903757884>"),
-    ("OGVanilla", "ogvanilla", "<:ogvanilla:1489190908477046804>"),
-    ("ShieldlessUHC", "shieldlessuhc", "<:shieldlessuhc:1489190941872095292>"),
     ("SpearMace", "spearmace", "<:spearmace:1489190973400416359>"),
     ("SpearElytra", "spearelytra", "<:spearelytra:1489190973400416359>"),
-    ("Stick Fight", "stickfight", "<:stickfight:1502574877536948334>"),
-    ("Trident", "trident", "<:trident:1505194733629210664>")
 ]
 
 # Combined list for all gamemodes
@@ -133,17 +126,14 @@ POINTS = {
 }
 
 GAMEMODE_ALIASES = {
-    "ogv": "ogvanilla", "ogvanilla": "ogvanilla", "nethpot": "nethpot",
-    "uhc": "uhc", "shieldlessuhc": "shieldlessuhc", "spearmace": "spearmace",
-    "spearelytra": "spearelytra", "stickfight": "stickfight", "trident": "trident",
+    "nethpot": "nethpot", "uhc": "uhc",
+    "spearmace": "spearmace", "spearelytra": "spearelytra",
 }
 
 GAMEMODE_DISPLAY_NAMES = {
     "vanilla": "Vanilla", "uhc": "UHC", "pot": "Pot", "nethpot": "NethPot",
-    "smp": "SMP", "sword": "Sword", "axe": "Axe", "mace": "Mace", "cart": "Cart",
-    "creeper": "Creeper", "diasmp": "DiaSMP", "ogvanilla": "OGVanilla",
-    "shieldlessuhc": "ShieldlessUHC", "spearmace": "SpearMace", "spearelytra": "SpearElytra",
-    "stickfight": "Stick Fight", "trident": "Trident",
+    "smp": "SMP", "sword": "Sword", "axe": "Axe", "mace": "Mace",
+    "spearmace": "SpearMace", "spearelytra": "SpearElytra",
 }
 
 GAMEMODE_INDICATORS = {
@@ -155,17 +145,9 @@ GAMEMODE_INDICATORS = {
     "nethpot": "<:nethpot:1489190890550464543>",
     "smp": "<:smp:1489190957306871938>", 
     "axe": "<:axe:1489190775085338817>",
-    "cart": "<:cart:1489190821390581860>", 
-    "creeper": "<:creeper:1489190838763393104>",
-    "diasmp": "<:diasmp:1489190856903757884>", 
-    "ogvanilla": "<:ogvanilla:1489190908477046804>",
-    "shieldlessuhc": "<:shieldlessuhc:1489190941872095292>", 
     "spearmace": "<:spearelytra:1489190973400416359>",  # Fixed Spear emoji ID
     "spearelytra": "<:spearelytra:1489190973400416359>",
     "spear": "<:spearelytra:1489190973400416359>",      # Plain 'spear' alias
-    "stickfight": "<:stickfight:1502574877536948334>", 
-    "stick fight": "<:stickfight:1502574877536948334>", 
-    "trident": "<:trident:1505194733629210664>",
 }
 
 # ==========================================
