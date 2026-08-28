@@ -302,20 +302,21 @@ class TestResultModal(discord.ui.Modal, title="Record Test Result"):
         # Post the result in the results channel
         results_chan = guild.get_channel(MODERN_RESULT_CHANNEL_ID) if MODERN_RESULT_CHANNEL_ID else None
         if results_chan:
-            content = (
-                f"{player_user.mention}\n\n"
-                f"🏆 **{player_user.display_name}'s Test Results**\n"
-                f"**Tester:** {tester_user.mention}\n"
-                f"**Username:** {self.player_mc}\n"
-                f"**Previous rank:** {get_rank_full_name(previous_rank)}\n"
-                f"**Earned rank:** {get_rank_full_name(tier)}"
+            result_embed = discord.Embed(
+                title="🏆 Test Results",
+                color=discord.Color.from_rgb(255, 0, 0)
             )
+            result_embed.add_field(name="Player", value=f"{player_user.mention} (**{self.player_mc}**)", inline=False)
+            result_embed.add_field(name="Tester", value=tester_user.mention, inline=True)
+            result_embed.add_field(name="Previous Rank", value=get_rank_full_name(previous_rank), inline=True)
+            result_embed.add_field(name="Earned Rank", value=get_rank_full_name(tier), inline=True)
             try:
                 skin_file = await fetch_3d_skin_file(self.player_mc)
                 if skin_file:
-                    await results_chan.send(content=content, file=skin_file)
+                    result_embed.set_thumbnail(url=f"attachment://{skin_file.filename}")
+                    await results_chan.send(content=player_user.mention, embed=result_embed, file=skin_file)
                 else:
-                    await results_chan.send(content=content)
+                    await results_chan.send(content=player_user.mention, embed=result_embed)
             except Exception:
                 pass
 
