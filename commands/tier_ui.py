@@ -418,6 +418,20 @@ class QueueActiveView(discord.ui.View):
             return await interaction.followup.send("❌ This queue is no longer active.", ephemeral=True)
 
         q_data = ACTIVE_QUEUES[ch_id]
+        is_tester = any(r.id == TESTER_ROLE_ID for r in getattr(user, "roles", [])) if TESTER_ROLE_ID else False
+
+        # Testers join/leave the "Active Testers" list, not the player queue.
+        if is_tester:
+            if user.id in q_data["testers"]:
+                q_data["testers"] = [t for t in q_data["testers"] if t != user.id]
+                await update_queue_message(interaction.message, q_data, self.mode_key)
+                await interaction.followup.send("✅ You successfully left as a tester.", ephemeral=True)
+            else:
+                q_data["testers"].append(user.id)
+                await update_queue_message(interaction.message, q_data, self.mode_key)
+                await interaction.followup.send(f"✅ You successfully joined the **{get_gamemode_display_name(self.mode_key)}** queue as a tester!", ephemeral=True)
+            return
+
         existing_player = next((p for p in q_data["players"] if p["id"] == user.id), None)
 
         if existing_player:
@@ -428,6 +442,20 @@ class QueueActiveView(discord.ui.View):
             has_cd, cd_str = await check_timeout(user.id, self.mode_key)
             if has_cd:
                 return await interaction.followup.send(f"⏱️ You are on cooldown in this gamemode! Time remaining: `{cd_str}`", ephemeral=True)
+
+            try:
+                current_rank = await get_player_rank_async(mc_name, get_gamemode_display_name(self.mode_key))
+            except Exception:
+                current_rank = "Unranked"
+
+            current_rank = (current_rank or "Unranked").strip().upper()
+            if current_rank in RANKS and current_rank != "UNRANKED":
+                if RANKS.index(current_rank) >= RANKS.index("LT3"):
+                    return await interaction.followup.send(
+                        f"❌ You already hold **{get_rank_full_name(current_rank)}** in this gamemode - a regular queue test can only give up to LT3. "
+                        f"Please open a **High Test** request instead!",
+                        ephemeral=True
+                    )
 
             if len(q_data["players"]) >= 20:
                 return await interaction.followup.send("❌ The queue is full (20/20).", ephemeral=True)
