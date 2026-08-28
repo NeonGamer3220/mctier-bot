@@ -279,8 +279,15 @@ class TestResultModal(discord.ui.Modal, title="Record Test Result"):
         except Exception:
             previous_rank = "Unranked"
 
+        # These don't depend on each other, so run them concurrently instead
+        # of one after another - the skin render call alone can take several
+        # seconds, and doing it in series with the DB save was the main
+        # reason this used to take ~20 seconds.
+        save_result_task = asyncio.create_task(save_test_result_supabase(player_user, self.player_mc, label, tier, tester_user, interaction))
+        skin_file_task = asyncio.create_task(fetch_3d_skin_file(self.player_mc))
+
         try:
-            await save_test_result_supabase(player_user, self.player_mc, label, tier, tester_user, interaction)
+            await save_result_task
         except Exception:
             pass
 
@@ -307,11 +314,11 @@ class TestResultModal(discord.ui.Modal, title="Record Test Result"):
                 color=discord.Color.from_rgb(255, 0, 0)
             )
             result_embed.add_field(name="Player", value=f"{player_user.mention} (**{self.player_mc}**)", inline=False)
-            result_embed.add_field(name="Tester", value=tester_user.mention, inline=True)
-            result_embed.add_field(name="Previous Rank", value=get_rank_full_name(previous_rank), inline=True)
-            result_embed.add_field(name="Earned Rank", value=get_rank_full_name(tier), inline=True)
+            result_embed.add_field(name="Tester", value=tester_user.mention, inline=False)
+            result_embed.add_field(name="Previous Rank", value=get_rank_full_name(previous_rank), inline=False)
+            result_embed.add_field(name="Earned Rank", value=get_rank_full_name(tier), inline=False)
             try:
-                skin_file = await fetch_3d_skin_file(self.player_mc)
+                skin_file = await skin_file_task
                 if skin_file:
                     result_embed.set_thumbnail(url=f"attachment://{skin_file.filename}")
                     await results_chan.send(content=player_user.mention, embed=result_embed, file=skin_file)
@@ -334,7 +341,6 @@ class TestResultModal(discord.ui.Modal, title="Record Test Result"):
 
         await archive_channel(interaction.channel, tester_user, reason=f"Test result recorded: {tier}")
 
-        await asyncio.sleep(3)
         try:
             await interaction.channel.delete(reason=f"Test finished: {tester_user.display_name}")
         except Exception:
