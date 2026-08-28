@@ -48,7 +48,7 @@ BOT_API_KEY = os.getenv("BOT_API_KEY", "")
 MINECRAFT_API_URL = os.getenv("MINECRAFT_API_URL", "http://localhost:8080").rstrip("/")
 
 HTTP_TIMEOUT_SECONDS = 10
-COOLDOWN_SECONDS = 14 * 24 * 60 * 60
+COOLDOWN_SECONDS = 30 * 24 * 60 * 60
 TESTS_TABLE = "tests"
 
 # Linking settings

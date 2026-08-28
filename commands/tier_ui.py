@@ -284,7 +284,7 @@ class TestResultModal(discord.ui.Modal, title="Record Test Result"):
         except Exception:
             pass
 
-        await set_cooldown(self.player_id, self.gamemode, 3600)
+        await set_cooldown(self.player_id, self.gamemode, 30 * 24 * 60 * 60)
 
         if self.queue_ch_id and self.queue_ch_id in ACTIVE_QUEUES:
             q_data = ACTIVE_QUEUES[self.queue_ch_id]
