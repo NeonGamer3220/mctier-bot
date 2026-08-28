@@ -6,7 +6,7 @@ High Test suggestion submission modal (does not close the channel immediately) a
 import discord
 import asyncio
 import time
-from config import TICKET_TYPES, ALL_TICKET_TYPES, get_gamemode_display_name, get_rank_full_name, STAFF_ROLE_ID, REGULATOR_ROLE_ID, RANKS, MODERN_RESULT_CHANNEL_ID, LOG_CHANNEL_ID, TIER_GIVER_ROLE_ID, TESTER_ROLE_ID
+from config import TICKET_TYPES, ALL_TICKET_TYPES, get_gamemode_display_name, get_rank_full_name, STAFF_ROLE_ID, REGULATOR_ROLE_ID, RANKS, MODERN_RESULT_CHANNEL_ID, LOG_CHANNEL_ID, TESTER_ROLE_ID
 from commands.tier_utils import (
     ACTIVE_QUEUES, INACTIVE_TICKETS, VALID_HT_TIERS, ALLOWED_QUEUE_TIERS,
     get_ticket_category, get_queue_category, update_queue_message, 
@@ -28,11 +28,11 @@ def _find_gamemode_tester_role(guild: discord.Guild, gamemode_label: str):
 
 
 def _can_give_tiers(member: discord.Member) -> bool:
-    """Only the TIER_GIVER_ROLE_ID role (or admin) can click the 'Next' button
+    """Only the Tester role (or admin) can click the 'Next' button
     and give/record a tier."""
     if member.guild_permissions.administrator:
         return True
-    return any(r.id == TIER_GIVER_ROLE_ID for r in member.roles)
+    return any(r.id == TESTER_ROLE_ID for r in member.roles)
 
 
 def _can_open_queue(member: discord.Member, guild: discord.Guild, gamemode_label: str):

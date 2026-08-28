@@ -21,31 +21,25 @@ ALLOWED_USER_IDS = [int(x.strip()) for x in os.getenv("ALLOWED_USER_IDS", "").sp
 BOT_COMMANDS_CHANNEL_ID = int(os.getenv("BOT_COMMANDS", "0"))
 QUEUES_CATEGORY = int(os.getenv("QUEUES_CATEGORY", "0"))
 
-REGULATOR_ROLE_ID = 1483822408182796418
-TESTER_ROLE_ID = 1469755118634270864
-
-# Only this role can click the queue "Next" button, and only this role
-# can give/record tiers (Recording Test Result). Admin always overrides.
-TIER_GIVER_ROLE_ID = 1521916878321090652
+REGULATOR_ROLE_ID = int(os.getenv("REGULATOR_ROLE_ID", "0"))
+TESTER_ROLE_ID = int(os.getenv("TESTER_ROLE_ID", "0"))
 
 BAN_CHANNEL_ID = int(os.getenv("BAN_CHANNEL_ID", "0"))
 WELCOME_CHANNEL_ID = int(os.getenv("WELCOME_CHANNEL_ID", "1496272517759897751"))
 HIGH_TEST_CHANNEL_ID = int(os.getenv("HIGH_TEST_CHANNEL_ID", "0"))
-ELO_CHANNEL_ID = int(os.getenv("ELO_CHANNEL_ID", "1511015484403749004"))
-ELO_TICKET_CATEGORY_ID = int(os.getenv("ELO_TICKET_CATEGORY_ID", "1469766438238687496"))
 HELP_TICKET_CATEGORY_ID = int(os.getenv("HELP_TICKET_CATEGORY_ID", "1524391860687339733"))
 BANNED_ROLE_ID = int(os.getenv("BANNED_ROLE_ID", "1496877749388972143"))
 TIER_RESULTS_CHANNEL_ID = int(os.getenv("TIER_RESULTS_CHANNEL_ID", "0"))
 ARCHIVE_CHANNEL_ID = int(os.getenv("ARCHIVE_CHANNEL_ID", "0"))
-LOG_CHANNEL_ID = 1505522005028503582
-MODERN_RESULT_CHANNEL_ID = 1469752490965864651
+LOG_CHANNEL_ID = int(os.getenv("LOG_CHANNEL_ID", "1505522005028503582"))
+MODERN_RESULT_CHANNEL_ID = int(os.getenv("RESULTS_CHANNEL_ID", "1469752490965864651"))
 
 # ==========================================
 # SYSTEM AND WEBSITE SETTINGS
 # ==========================================
 USE_SUPABASE_API = True
 SUPABASE_URL = os.getenv("SUPABASE_URL", "ENTER_YOUR_SUPABASE_URL_HERE")
-SUPABASE_KEY = os.getenv("SUPABASE_KEY", "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpmY2d2cmJvZnlkY21jdHRjeWV2Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MDgyMTI3NSwiZXhwIjoyMDg2Mzk3Mjc1fQ.aipbmUjHjC92drOqhO3cy60-LC0RDPOpbvtHrk26tEA")
+SUPABASE_KEY = os.getenv("SUPABASE_KEY", "")
 SUPABASE_PG_URL = os.getenv("SUPABASE_PG_URL", "")
 DATABASE_URL = os.getenv("DATABASE_URL", "")
 
@@ -57,25 +51,9 @@ HTTP_TIMEOUT_SECONDS = 10
 COOLDOWN_SECONDS = 14 * 24 * 60 * 60
 TESTS_TABLE = "tests"
 
-# Category for the Modern (ELO) queue/test channels:
-ELO_TICKET_CATEGORY_ID = 1478400462225936496
-
 # Linking settings
 LINK_CODE_LENGTH = 8
 LINK_CODE_EXPIRY_MINUTES = 10
-
-# ==========================================
-# ELO SYSTEM SETTINGS
-# ==========================================
-ELO_RANGE = 251
-ELO_MATCH_SCORE_PREFIX = "@"
-ELO_WIN_DEFAULT = 22
-ELO_LOSE_DEFAULT = -22
-ELO_WIN_LOWER = 12
-ELO_LOSE_LOWER = -12
-ELO_WIN_HIGHER = 28
-ELO_LOSE_HIGHER = -28
-ELO_MIN = 0
 
 # ==========================================
 # GAMEMODES AND RANKS (DATABASE)
@@ -161,12 +139,6 @@ def get_gamemode_indicator(mode_key: str, is_open: bool = True) -> str:
     if is_open:
         return GAMEMODE_INDICATORS.get(mode_key.lower().strip(), "🟢")
     return "🔴"
-
-def get_elo_for_rank(rank: str) -> int:
-    if rank == "Unranked" or not rank:
-        return 500
-    pts = POINTS.get(rank, 0)
-    return max(ELO_MIN, pts * 100)
 
 def get_rank_value_min(rank: str) -> int:
     return POINTS.get(rank, 0)
