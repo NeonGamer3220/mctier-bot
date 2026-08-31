@@ -16,6 +16,7 @@ import time
 import asyncio
 
 from config import STAFF_ROLE_ID, HELP_TICKET_CATEGORY_ID
+from commands.tier_utils import archive_channel
 
 PANEL_COLOR = 0xB026FF
 
@@ -46,6 +47,7 @@ class SupportTicketCloseView(discord.ui.View):
 
         await ch.send("🔒 The ticket will be deleted in 5 seconds...")
         await asyncio.sleep(5)
+        await archive_channel(ch, interaction.user, reason="Help ticket closed")
         try:
             await ch.delete()
         except Exception:

@@ -339,8 +339,6 @@ class TestResultModal(discord.ui.Modal, title="Record Test Result"):
             except Exception:
                 pass
 
-        await archive_channel(interaction.channel, tester_user, reason=f"Test result recorded: {tier}")
-
         try:
             await interaction.channel.delete(reason=f"Test finished: {tester_user.display_name}")
         except Exception:
@@ -388,7 +386,6 @@ class TestTicketView(discord.ui.View):
                 pass
 
         await asyncio.sleep(5)
-        await archive_channel(interaction.channel, interaction.user, reason="Test closed without a result")
         try:
             await interaction.channel.delete(reason=f"Test closed without a result: {interaction.user.display_name}")
         except Exception:
@@ -557,7 +554,6 @@ class QueueActiveView(discord.ui.View):
 
         await interaction.response.send_message("🔒 Queue closed. The channel will be deleted in 5 seconds...", ephemeral=True)
         await asyncio.sleep(5)
-        await archive_channel(interaction.channel, interaction.user, reason="Queue closed")
         try:
             await interaction.channel.delete(reason=f"Queue closed: {interaction.user.display_name}")
         except Exception:
